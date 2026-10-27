@@ -1,0 +1,35 @@
+@startuml sd04-alertas
+title SD04 - Verificar prazos e alertar (UC16) - planejado para o TP3
+skinparam shadowing false
+autonumber
+participant "Agendador\n(rotina diária 7h)" as J
+control "prazosService" as S
+entity "Repositórios\n(tcc, calendario, versao, alerta)" as R
+control "Notificações (shared)" as N
+database "PostgreSQL" as DB
+
+J -> S : verificarPrazos(hoje)
+S -> R : TCCs em andamento com a etapa liberada e sem entrega
+R -> DB : SELECT tcc, calendario_etapa, versao_tcc
+DB --> R : lista
+loop para cada TCC
+  alt faltam 7 dias ou 1 dia
+    S -> R : alerta já enviado?
+    R -> DB : SELECT alerta_prazo
+    opt ainda não enviado
+      S -> N : notificar(aluno e orientador, "Prazo próximo")
+      N -> DB : INSERT notificacao
+      N -> N : envia e-mail
+      S -> R : registrarAlerta(tipo 7_DIAS ou 1_DIA)
+      R -> DB : INSERT alerta_prazo
+    end
+  else prazo vencido sem entrega
+    S -> R : marcarAtrasado(tcc)
+    R -> DB : UPDATE tcc SET atrasado = true
+    S -> R : registrarEvento(ETAPA_VENCIDA)
+    S -> N : notificar(coordenação, aluno, orientador)
+    S -> R : registrarAlerta(tipo VENCIDO)
+  end
+end
+S --> J : resumo (alertas enviados, TCCs atrasados)
+@enduml

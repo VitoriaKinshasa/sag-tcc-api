@@ -1,0 +1,74 @@
+@startuml sd02-orientacao
+title SD02 - Solicitar e responder orientação (UC07 e UC08)
+skinparam shadowing false
+autonumber
+actor "Aluno" as A
+actor "Orientador" as O
+participant "Front-end" as FE
+boundary "orientacao.routes" as RT
+control "orientacaoService" as S
+entity "Repositórios\n(tcc, orientacao)" as R
+control "Auditoria e\nNotificações (shared)" as SH
+database "PostgreSQL" as DB
+
+== UC07 - Aluno solicita orientação ==
+A -> FE : escolhe o professor e clica em "Solicitar"
+FE -> RT : POST /api/orientacao/solicitacoes {professorId}
+RT -> RT : autenticar + exigirPerfil(ALUNO)
+RT -> S : solicitar(alunoId, professorId)
+S -> DB : BEGIN
+S -> R : buscarAtivoDoAluno(alunoId) e trava o TCC
+R -> DB : SELECT ... FOR UPDATE
+alt sem TCC em andamento
+  S --> RT : erro 422 "Envie sua proposta primeiro"
+else TCC já tem orientador / solicitação pendente (RD04)
+  S --> RT : erro 422 / 409
+else
+  S -> R : buscarProfessorComCarga(professorId) e trava o professor
+  R -> DB : SELECT ... FOR UPDATE + COUNT orientandos
+  alt não é orientador ativo do NUCOMP (RD02)\nou atingiu o limite (RD05)
+    S --> RT : erro 422
+  else
+    S -> R : inserirSolicitacao(tccId, professorId)
+    R -> DB : INSERT solicitacao_orientacao (PENDENTE)
+    S -> SH : registrarEvento + registrarAuditoria
+    SH -> DB : INSERT evento_tcc, auditoria
+    S -> SH : notificar(professor)
+    SH -> DB : INSERT notificacao
+    SH -> SH : envia e-mail
+    S -> DB : COMMIT
+    S --> RT : solicitação
+    RT --> FE : 201 Created
+    FE --> A : "Solicitação enviada"
+  end
+end
+note right of S : Em qualquer erro, a transação\nfaz ROLLBACK e nada é gravado.
+
+== UC08 - Orientador aceita ==
+O -> FE : abre "Solicitações recebidas" e clica em "Aceitar"
+FE -> RT : PATCH /api/orientacao/solicitacoes/{id} {aceitar: true}
+RT -> RT : autenticar + exigirPerfil(ORIENTADOR)
+RT -> S : responder(professorId, id, dados)
+S -> DB : BEGIN
+S -> R : buscarSolicitacao(id) FOR UPDATE
+alt solicitação de outro professor
+  S --> RT : erro 403
+else já respondida
+  S --> RT : erro 409
+else
+  S -> R : buscarProfessorComCarga (confere RD05 de novo)
+  alt limite atingido
+    S --> RT : erro 422
+  else
+    S -> R : responderSolicitacao(ACEITA)
+    S -> R : definirOrientacao(tcc, professor)\nsituacao = EM_DESENVOLVIMENTO
+    S -> R : iniciarVinculo(tcc, professor, ORIENTADOR)
+    R -> DB : UPDATE solicitacao, UPDATE tcc, INSERT vinculo_orientacao
+    S -> SH : registrarEvento + registrarAuditoria + notificar(aluno)
+    SH -> DB : INSERT evento_tcc, auditoria, notificacao
+    S -> DB : COMMIT
+    RT --> FE : 200 OK
+    FE --> O : "Orientação aceita"
+  end
+end
+@enduml

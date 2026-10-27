@@ -1,0 +1,58 @@
+@startuml sd01-login
+title SD01 - Fazer login (UC01)
+skinparam shadowing false
+autonumber
+actor "Usuário" as U
+participant "Front-end" as FE
+boundary "auth.routes\nPOST /api/auth/login" as RT
+control "authService" as S
+entity "usuariosRepository" as R
+database "PostgreSQL" as DB
+
+U -> FE : informa e-mail e senha
+FE -> RT : POST /api/auth/login {email, senha}
+RT -> RT : valida formato (zod)
+alt formato inválido
+  RT --> FE : 422 "E-mail em formato inválido"
+end
+RT -> S : login(email, senha)
+S -> R : buscarPorEmail(email)
+R -> DB : SELECT * FROM usuario WHERE lower(email) = lower($1)
+DB --> R : usuário (ou nenhum)
+R --> S : usuário
+alt usuário não encontrado
+  S --> RT : erro 401
+  RT --> FE : 401 "E-mail ou senha inválidos"
+else usuário desativado
+  S --> RT : erro 403
+  RT --> FE : 403 "Usuário desativado. Procure a coordenação"
+else conta bloqueada (bloqueado_ate no futuro)
+  S --> RT : erro 423 (RNF04)
+  RT --> FE : 423 "Conta bloqueada temporariamente..."
+else senha ainda não definida
+  S --> RT : erro 403
+  RT --> FE : 403 "Defina sua senha pelo link de primeiro acesso..."
+else
+  S -> S : bcrypt.compare(senha, senha_hash)
+  alt senha incorreta
+    alt 5ª tentativa errada
+      S -> R : registrarFalhaLogin(id, 0, agora + 15 min)
+      R -> DB : UPDATE usuario SET tentativas_login, bloqueado_ate
+      S --> RT : erro 423 (RNF04)
+      RT --> FE : 423 "Conta bloqueada por 15 minutos..."
+    else 1ª a 4ª tentativa
+      S -> R : registrarFalhaLogin(id, tentativas + 1, nulo)
+      R -> DB : UPDATE usuario SET tentativas_login
+      S --> RT : erro 401
+      RT --> FE : 401 "E-mail ou senha inválidos"
+    end
+  else senha correta
+    S -> R : zerarTentativas(id)
+    R -> DB : UPDATE usuario SET tentativas_login = 0, bloqueado_ate = NULL
+    S -> S : gera token JWT (30 min, id, perfil, curso)
+    S --> RT : token, usuário, termoPendente
+    RT --> FE : 200 OK
+    FE --> U : abre o painel do perfil\n(ou o termo de uso, se termoPendente)
+  end
+end
+@enduml

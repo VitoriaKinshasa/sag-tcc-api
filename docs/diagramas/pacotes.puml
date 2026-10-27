@@ -1,0 +1,84 @@
+@startuml pacotes
+title SAG-TCC - Diagrama de Pacotes
+skinparam shadowing false
+skinparam packageStyle folder
+left to right direction
+
+package "sag-tcc-api" {
+  package "src" {
+    package "config" {
+    }
+    package "modules" {
+      package "auth" {
+      }
+      package "usuarios" {
+      }
+      package "cursos" {
+      }
+      package "propostas" {
+      }
+      package "orientacao" {
+      }
+      package "acompanhamento (TP3)" #FFF8E1 {
+      }
+      package "bancas (TP3)" #FFF8E1 {
+      }
+      package "painel (TP3)" #FFF8E1 {
+      }
+      package "publico (TP3)" #FFF8E1 {
+      }
+    }
+    package "jobs (TP3)" #FFF8E1 {
+    }
+    package "shared" {
+      package "db" {
+      }
+      package "errors" {
+      }
+      package "middlewares" {
+      }
+      package "auditoria" {
+      }
+      package "notificacao" {
+      }
+      package "util" {
+      }
+    }
+  }
+  package "database" {
+  }
+  package "tests" {
+  }
+  package "scripts" {
+  }
+  package "docs" {
+  }
+}
+
+package "sag-tcc-web (TP3)" #FFF8E1 {
+  package "pages" {
+  }
+  package "components" {
+  }
+  package "services" {
+  }
+}
+
+note as N1
+  Cada módulo de **modules** é dividido em três camadas:
+  **routes** – rotas e validação de entrada
+  **service** – regras de negócio
+  **repository** – acesso ao banco
+end note
+
+modules ..> shared : <<use>>
+modules ..> config : <<use>>
+shared ..> config : <<use>>
+orientacao ..> propostas : <<use>>
+usuarios ..> auth : <<use>>
+auth ..> usuarios : <<use>>
+"jobs (TP3)" ..> "acompanhamento (TP3)" : <<use>>
+tests ..> modules : <<test>>
+scripts ..> database : <<use>>
+"sag-tcc-web (TP3)" ..> modules : HTTPS/JSON
+@enduml

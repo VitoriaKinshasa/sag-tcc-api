@@ -1,0 +1,68 @@
+@startuml componentes
+title SAG-TCC - Diagrama de Componentes
+skinparam componentStyle uml2
+skinparam shadowing false
+left to right direction
+
+node "Navegador do usuário" {
+  [Front-end Web\n(React)] as FE
+}
+
+interface "REST/JSON\n(HTTPS)" as API
+
+package "API SAG-TCC (Node.js + Express)" as BACK {
+  [Segurança e Permissões\n(JWT + perfis)] as SEG
+
+  package "Implementados no TP2" #E8F5E9 {
+    [Autenticação] as AUTH
+    [Usuários e Cursos] as USU
+    [Propostas e Orientação] as ORI
+  }
+
+  package "Planejados (TP3)" #FFF8E1 {
+    [Acompanhamento e Prazos] as ACO
+    [Agendador de Prazos] as JOB
+    [Bancas e Defesas] as BAN
+    [Painel e Auditoria] as PAI
+    [Divulgação e Consulta Pública] as PUB
+  }
+
+  package "Serviços compartilhados" #E3F2FD {
+    [Auditoria] as AUD
+    [Notificações] as NOT
+  }
+}
+
+database "PostgreSQL 16" as DB
+cloud "Serviço de E-mail" as MAIL
+folder "Armazenamento\nde PDFs" as FS
+cloud "Serviço de IA" as IA
+
+FE --( API
+API - SEG
+SEG --> AUTH
+SEG --> USU
+SEG --> ORI
+SEG --> ACO
+SEG --> BAN
+SEG --> PAI
+SEG --> PUB
+
+JOB ..> ACO : executa
+USU ..> AUD : registra
+ORI ..> AUD : registra
+ACO ..> AUD : registra
+BAN ..> AUD : registra
+ORI ..> NOT : avisa
+ACO ..> NOT : avisa
+BAN ..> NOT : avisa
+AUTH ..> NOT : envia link
+PAI ..> AUD : consulta
+
+NOT --> MAIL
+ACO --> FS
+BAN --> FS
+PUB --> IA
+
+BACK --> DB : SQL
+@enduml

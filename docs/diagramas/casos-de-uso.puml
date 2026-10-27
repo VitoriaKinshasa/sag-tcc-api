@@ -1,0 +1,87 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+actor Coordenação as Coord
+actor Orientador as Ori
+actor Aluno as Alu
+actor "Membro de Banca" as Banca
+actor Visitante as Vis
+actor "Agendador" as Ag <<sistema>>
+
+rectangle "SAG-TCC" {
+  package "Acesso e Perfis" {
+    usecase "UC01 Fazer login" as UC01
+    usecase "UC02 Recuperar senha" as UC02
+    usecase "UC03 Manter usuários (CRUD)" as UC03
+    usecase "UC04 Manter cursos e áreas (CRUD)" as UC04
+    usecase "UC05 Manter áreas de interesse" as UC05
+  }
+  package "Propostas e Orientação" {
+    usecase "UC06 Submeter proposta" as UC06
+    usecase "UC07 Solicitar orientação" as UC07
+    usecase "UC08 Responder solicitação" as UC08
+    usecase "UC09 Agendar reunião / registrar encontros" as UC09
+    usecase "UC10 Solicitar troca de orientador" as UC10
+    usecase "UC11 Aprovar troca de orientador" as UC11
+    usecase "UC12 Registrar desistência" as UC12
+  }
+  package "Acompanhamento e Prazos" {
+    usecase "UC13 Configurar calendário" as UC13
+    usecase "UC14 Enviar versão" as UC14
+    usecase "UC15 Emitir parecer" as UC15
+    usecase "UC16 Verificar prazos e alertar" as UC16
+    usecase "UC17 Alterar situação do TCC" as UC17
+    usecase "UC18 Consultar histórico e notificações" as UC18
+  }
+  package "Bancas e Defesas" {
+    usecase "UC19 Cadastrar banca" as UC19
+    usecase "UC20 Registrar resultado" as UC20
+    usecase "UC21 Consultar agenda de defesas" as UC21
+  }
+  package "Painel de Governança" {
+    usecase "UC22 Consultar painel" as UC22
+    usecase "UC23 Buscar e exportar" as UC23
+    usecase "UC24 Consultar auditoria" as UC24
+    usecase "UC25 Gerar banner com IA" as UC25
+  }
+  package "Consulta Pública" {
+    usecase "UC26 Pesquisar TCCs aprovados" as UC26
+    usecase "UC27 Definir visibilidade" as UC27
+  }
+}
+
+UC01 <.. UC02 : <<extend>>
+UC19 ..> UC21 : <<include>>
+
+Coord --> UC03
+Coord --> UC04
+Coord --> UC11
+Coord --> UC13
+Coord --> UC17
+Coord --> UC22
+Coord --> UC23
+Coord --> UC24
+Ori --> UC05
+Ori --> UC08
+Ori --> UC09
+Ori --> UC15
+Ori --> UC17
+Ori --> UC19
+Ori --> UC27
+Alu --> UC06
+Alu --> UC07
+Alu --> UC10
+Alu --> UC12
+Alu --> UC14
+Alu --> UC18
+Alu --> UC25
+Alu --> UC27
+Banca --> UC20
+Vis --> UC21
+Vis --> UC26
+Ag --> UC16
+Coord --> UC01
+Ori --> UC01
+Alu --> UC01
+Banca --> UC01
+@enduml

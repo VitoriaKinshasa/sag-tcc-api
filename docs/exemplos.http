@@ -1,0 +1,393 @@
+###############################################################################
+# SAG-TCC – Roteiro de demonstração da API (TP2)
+#
+# COMO USAR
+# 1. Zere o banco:   npm run db:reset
+# 2. Ligue a API:    npm run dev
+# 3. Instale a extensão "REST Client" no VS Code.
+# 4. Clique em "Send Request" em cada bloco, NA ORDEM, de cima para baixo.
+#    Os tokens e os ids são preenchidos sozinhos a partir das respostas anteriores.
+#
+# Usuários (senha de todos: Senha@123)
+#   Coordenação de SI ... coordenacao.si@uea.edu.br
+#   Prof. Ana Souza ..... ana.souza@uea.edu.br
+#   Prof. Bruno Lima .... bruno.lima@uea.edu.br
+#   Carla Mendes ........ carla.mendes@uea.edu.br  (aluna)
+#   Diego Rocha ......... diego.rocha@uea.edu.br   (aluno)
+#
+# Em cada bloco, a linha "Esperado:" diz qual resposta deve aparecer.
+# Respostas de ERRO marcadas como esperadas mostram uma regra funcionando.
+###############################################################################
+
+@api = http://localhost:3000/api
+
+@tokenCoord = {{loginCoord.response.body.$.token}}
+@tokenAna   = {{loginAna.response.body.$.token}}
+@tokenBruno = {{loginBruno.response.body.$.token}}
+@tokenCarla = {{loginCarla.response.body.$.token}}
+@tokenDiego = {{loginDiego.response.body.$.token}}
+@idAna   = {{loginAna.response.body.$.usuario.id}}
+@idBruno = {{loginBruno.response.body.$.usuario.id}}
+
+
+###############################################################################
+# PARTE A – LOGIN (UC01)
+###############################################################################
+
+### A1. Login da Coordenação        Esperado: 200 OK com "token"
+# @name loginCoord
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "coordenacao.si@uea.edu.br", "senha": "Senha@123" }
+
+### A2. Login da Prof. Ana          Esperado: 200 OK
+# @name loginAna
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "ana.souza@uea.edu.br", "senha": "Senha@123" }
+
+### A3. Login do Prof. Bruno        Esperado: 200 OK
+# @name loginBruno
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "bruno.lima@uea.edu.br", "senha": "Senha@123" }
+
+### A4. Login da aluna Carla        Esperado: 200 OK
+# @name loginCarla
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "carla.mendes@uea.edu.br", "senha": "Senha@123" }
+
+### A5. Login do aluno Diego        Esperado: 200 OK
+# @name loginDiego
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "diego.rocha@uea.edu.br", "senha": "Senha@123" }
+
+### A6. Senha errada                Esperado: 401 "E-mail ou senha inválidos" (não diz qual campo está errado)
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "carla.mendes@uea.edu.br", "senha": "senhaErrada" }
+
+
+###############################################################################
+# PARTE B – COORDENAÇÃO (UC03, UC04) E PROFESSOR (UC05)
+###############################################################################
+
+### B1. UC03 – Coordenação cadastra o aluno Eduardo
+###     Esperado: 201 Created. No terminal do servidor aparece o e-mail com o link de primeiro acesso.
+POST {{api}}/usuarios
+Authorization: Bearer {{tokenCoord}}
+Content-Type: application/json
+
+{ "nome": "Eduardo Lima", "email": "eduardo.lima@uea.edu.br", "perfil": "ALUNO", "cursoId": 2, "matricula": "2022000003" }
+
+### B2. UC03 – Cadastrar de novo o mesmo e-mail      Esperado: 409 "Já existe um usuário com este e-mail"
+POST {{api}}/usuarios
+Authorization: Bearer {{tokenCoord}}
+Content-Type: application/json
+
+{ "nome": "Eduardo Repetido", "email": "EDUARDO.LIMA@uea.edu.br", "perfil": "ALUNO", "cursoId": 2, "matricula": "2022000099" }
+
+### B3. RNF05 – Aluna tenta listar usuários           Esperado: 403 "Você não tem permissão para esta ação"
+GET {{api}}/usuarios
+Authorization: Bearer {{tokenCarla}}
+
+### B4. UC04 – Coordenação cadastra uma nova área     Esperado: 201 Created
+POST {{api}}/areas
+Authorization: Bearer {{tokenCoord}}
+Content-Type: application/json
+
+{ "nome": "Computação Gráfica" }
+
+### B5. UC04 – Tentar excluir o curso de SI (tem alunos)   Esperado: 409 "...não pode ser excluído. Use a desativação"
+DELETE {{api}}/cursos/2
+Authorization: Bearer {{tokenCoord}}
+
+### B6. UC05 – Prof. Ana sem nenhuma área             Esperado: 422 "Selecione ao menos uma área de interesse"
+PUT {{api}}/usuarios/me/areas
+Authorization: Bearer {{tokenAna}}
+Content-Type: application/json
+
+{ "areaIds": [] }
+
+### B7. UC05 – Prof. Ana escolhe suas áreas (Eng. de Software e Banco de Dados)   Esperado: 200 OK
+PUT {{api}}/usuarios/me/areas
+Authorization: Bearer {{tokenAna}}
+Content-Type: application/json
+
+{ "areaIds": [1, 2] }
+
+
+###############################################################################
+# PARTE C – CARLA: PROPOSTA E ORIENTAÇÃO ACEITA (UC06, UC07, UC08)
+###############################################################################
+
+### C1. UC06 – Carla envia a proposta                Esperado: 201 Created, "situacao": "EM_PROPOSTA"
+# @name propostaCarla
+POST {{api}}/tccs
+Authorization: Bearer {{tokenCarla}}
+Content-Type: application/json
+
+{
+  "titulo": "Chatbot para apoio ao ensino de programação",
+  "resumo": "Este trabalho propõe um chatbot que auxilia alunos iniciantes em programação.",
+  "areaId": 3
+}
+
+### C2. RD01 – Carla tenta enviar um segundo TCC     Esperado: 409, "regra": "RD01"
+POST {{api}}/tccs
+Authorization: Bearer {{tokenCarla}}
+Content-Type: application/json
+
+{ "titulo": "Outro trabalho qualquer", "resumo": "Segundo TCC no mesmo curso.", "areaId": 1 }
+
+### C3. UC07 – Carla vê os orientadores de Inteligência Artificial   Esperado: aparece o Prof. Bruno, "disponivel": true
+GET {{api}}/orientacao/orientadores?areaId=3
+Authorization: Bearer {{tokenCarla}}
+
+### C4. UC07 – Carla pede orientação ao Prof. Bruno   Esperado: 201 Created, "status": "PENDENTE"
+# @name solicitacaoCarla
+POST {{api}}/orientacao/solicitacoes
+Authorization: Bearer {{tokenCarla}}
+Content-Type: application/json
+
+{ "professorId": {{idBruno}} }
+
+### C5. UC08 – Bruno vê as solicitações recebidas    Esperado: aparece o pedido da Carla
+GET {{api}}/orientacao/solicitacoes/recebidas
+Authorization: Bearer {{tokenBruno}}
+
+### C6. UC08 – Bruno aceita                          Esperado: 200 OK, "status": "ACEITA"
+PATCH {{api}}/orientacao/solicitacoes/{{solicitacaoCarla.response.body.$.id}}
+Authorization: Bearer {{tokenBruno}}
+Content-Type: application/json
+
+{ "aceitar": true }
+
+### C7. Carla confere o próprio TCC                  Esperado: "situacao": "EM_DESENVOLVIMENTO" e o orientador preenchido
+GET {{api}}/tccs/meu
+Authorization: Bearer {{tokenCarla}}
+
+
+###############################################################################
+# PARTE D – DIEGO: UMA SOLICITAÇÃO POR VEZ E RECUSA (UC07, UC08, RD04)
+###############################################################################
+
+### D1. UC06 – Diego envia a proposta                Esperado: 201 Created
+# @name propostaDiego
+POST {{api}}/tccs
+Authorization: Bearer {{tokenDiego}}
+Content-Type: application/json
+
+{
+  "titulo": "Banco de dados para gestão de bibliotecas escolares",
+  "resumo": "Modelagem e implementação de um banco de dados para bibliotecas de escolas públicas.",
+  "areaId": 2
+}
+
+### D2. UC07 – Diego pede orientação à Prof. Ana     Esperado: 201 Created
+# @name solicitacaoDiego
+POST {{api}}/orientacao/solicitacoes
+Authorization: Bearer {{tokenDiego}}
+Content-Type: application/json
+
+{ "professorId": {{idAna}} }
+
+### D3. RD04 – Diego tenta pedir também ao Bruno     Esperado: 409, "regra": "RD04" (só uma solicitação pendente)
+POST {{api}}/orientacao/solicitacoes
+Authorization: Bearer {{tokenDiego}}
+Content-Type: application/json
+
+{ "professorId": {{idBruno}} }
+
+### D4. UC08 – Ana tenta recusar sem justificativa   Esperado: 422 "A justificativa é obrigatória..."
+PATCH {{api}}/orientacao/solicitacoes/{{solicitacaoDiego.response.body.$.id}}
+Authorization: Bearer {{tokenAna}}
+Content-Type: application/json
+
+{ "aceitar": false }
+
+### D5. UC08 – Ana recusa com justificativa          Esperado: 200 OK, "status": "RECUSADA"
+PATCH {{api}}/orientacao/solicitacoes/{{solicitacaoDiego.response.body.$.id}}
+Authorization: Bearer {{tokenAna}}
+Content-Type: application/json
+
+{ "aceitar": false, "justificativa": "Sem disponibilidade neste semestre" }
+
+### D6. UC07 – Agora Diego pode pedir ao Bruno       Esperado: 201 Created
+# @name solicitacaoDiego2
+POST {{api}}/orientacao/solicitacoes
+Authorization: Bearer {{tokenDiego}}
+Content-Type: application/json
+
+{ "professorId": {{idBruno}} }
+
+### D7. UC08 – Bruno aceita o Diego                  Esperado: 200 OK, "status": "ACEITA"
+PATCH {{api}}/orientacao/solicitacoes/{{solicitacaoDiego2.response.body.$.id}}
+Authorization: Bearer {{tokenBruno}}
+Content-Type: application/json
+
+{ "aceitar": true }
+
+
+###############################################################################
+# PARTE E – REUNIÃO E ENCONTROS (UC09, RD15)
+###############################################################################
+
+### E1. RD15 – Ana tenta agendar reunião com a Carla (não é orientadora dela)   Esperado: 422, "regra": "RD15"
+POST {{api}}/orientacao/tccs/{{propostaCarla.response.body.$.id}}/reunioes
+Authorization: Bearer {{tokenAna}}
+Content-Type: application/json
+
+{ "dataHora": "{{$datetime iso8601 1 d}}", "localOuLink": "Sala 10 – EST" }
+
+### E2. UC09 – Bruno agenda reunião com a Carla para amanhã   Esperado: 201 Created
+POST {{api}}/orientacao/tccs/{{propostaCarla.response.body.$.id}}/reunioes
+Authorization: Bearer {{tokenBruno}}
+Content-Type: application/json
+
+{ "dataHora": "{{$datetime iso8601 1 d}}", "localOuLink": "Sala 10 – EST" }
+
+### E3. UC09 A2 – Bruno tenta marcar com o Diego no mesmo horário   Esperado: 409 "Você já tem uma reunião próxima deste horário..."
+POST {{api}}/orientacao/tccs/{{propostaDiego.response.body.$.id}}/reunioes
+Authorization: Bearer {{tokenBruno}}
+Content-Type: application/json
+
+{ "dataHora": "{{$datetime iso8601 1 d}}", "localOuLink": "Sala 11 – EST" }
+
+### E4. UC09 A2 – Bruno confirma mesmo assim         Esperado: 201 Created
+POST {{api}}/orientacao/tccs/{{propostaDiego.response.body.$.id}}/reunioes
+Authorization: Bearer {{tokenBruno}}
+Content-Type: application/json
+
+{ "dataHora": "{{$datetime iso8601 1 d}}", "localOuLink": "Sala 11 – EST", "confirmarConflito": true }
+
+### E5. UC09 A1 – Bruno registra um encontro com a Carla   Esperado: 201 Created
+POST {{api}}/orientacao/tccs/{{propostaCarla.response.body.$.id}}/encontros
+Authorization: Bearer {{tokenBruno}}
+Content-Type: application/json
+
+{ "data": "{{$datetime iso8601}}", "resumo": "Definido o escopo do capítulo 1 e as referências iniciais" }
+
+
+###############################################################################
+# PARTE F – TROCA DE ORIENTADOR (UC10, UC11, RD14)
+###############################################################################
+
+### F1. UC10 – Carla pede troca do Bruno para a Ana   Esperado: 201 Created, "status": "PENDENTE"
+# @name trocaCarla
+POST {{api}}/orientacao/trocas
+Authorization: Bearer {{tokenCarla}}
+Content-Type: application/json
+
+{ "novoOrientadorId": {{idAna}}, "motivo": "O tema passou a envolver modelagem de dados" }
+
+### F2. UC10 A3 – Carla pede de novo                  Esperado: 409 "Já existe uma solicitação de troca aguardando a coordenação"
+POST {{api}}/orientacao/trocas
+Authorization: Bearer {{tokenCarla}}
+Content-Type: application/json
+
+{ "novoOrientadorId": {{idAna}}, "motivo": "Pedido repetido" }
+
+### F3. UC11 – Coordenação aprova a troca             Esperado: 200 OK, "status": "APROVADA"
+PATCH {{api}}/orientacao/trocas/{{trocaCarla.response.body.$.id}}
+Authorization: Bearer {{tokenCoord}}
+Content-Type: application/json
+
+{ "aprovar": true }
+
+### F4. RF36 – Linha do tempo do TCC da Carla
+###     Esperado: proposta enviada → orientação solicitada → aceita → reunião → encontro → troca solicitada → troca aprovada
+GET {{api}}/tccs/{{propostaCarla.response.body.$.id}}/historico
+Authorization: Bearer {{tokenCarla}}
+
+
+###############################################################################
+# PARTE G – DESISTÊNCIA (UC12)
+###############################################################################
+
+### G1. UC12 – Diego pede desistência                 Esperado: 201 Created
+# @name desistenciaDiego
+POST {{api}}/orientacao/desistencias
+Authorization: Bearer {{tokenDiego}}
+Content-Type: application/json
+
+{ "motivo": "Transferência para outro curso" }
+
+### G2. UC12 – Bruno (orientador do Diego) confirma   Esperado: 200 OK, "status": "APROVADA"
+PATCH {{api}}/orientacao/desistencias/{{desistenciaDiego.response.body.$.id}}
+Authorization: Bearer {{tokenBruno}}
+Content-Type: application/json
+
+{ "confirmar": true }
+
+### G3. Com o TCC cancelado, Diego pode enviar uma nova proposta   Esperado: 201 Created
+POST {{api}}/tccs
+Authorization: Bearer {{tokenDiego}}
+Content-Type: application/json
+
+{ "titulo": "Novo tema de TCC do Diego", "resumo": "Nova proposta depois da desistência.", "areaId": 5 }
+
+
+###############################################################################
+# PARTE H – NOTIFICAÇÕES (RF37) E RECUPERAÇÃO DE SENHA (UC02)
+###############################################################################
+
+### H1. RF37 – Notificações da Carla                 Esperado: lista com "Orientação aceita", "Reunião de alinhamento agendada", "Troca de orientador aprovada"...
+GET {{api}}/notificacoes
+Authorization: Bearer {{tokenCarla}}
+
+### H2. UC02 – Carla esqueceu a senha                 Esperado: 200 OK. No terminal do servidor aparece o e-mail com o link.
+POST {{api}}/auth/recuperar-senha
+Content-Type: application/json
+
+{ "email": "carla.mendes@uea.edu.br" }
+
+
+###############################################################################
+# PARTE I – BLOQUEIO POR TENTATIVAS (RNF04)
+# Rode os 5 blocos seguidos. Para desbloquear depois: npm run db:reset
+###############################################################################
+
+### I1. Tentativa errada 1   Esperado: 401
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "diego.rocha@uea.edu.br", "senha": "errada" }
+
+### I2. Tentativa errada 2   Esperado: 401
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "diego.rocha@uea.edu.br", "senha": "errada" }
+
+### I3. Tentativa errada 3   Esperado: 401
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "diego.rocha@uea.edu.br", "senha": "errada" }
+
+### I4. Tentativa errada 4   Esperado: 401
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "diego.rocha@uea.edu.br", "senha": "errada" }
+
+### I5. Tentativa errada 5   Esperado: 423 "Conta bloqueada por 15 minutos após 5 tentativas erradas"
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "diego.rocha@uea.edu.br", "senha": "errada" }
+
+### I6. Mesmo com a senha CERTA   Esperado: 423 (continua bloqueado por 15 minutos)
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "diego.rocha@uea.edu.br", "senha": "Senha@123" }

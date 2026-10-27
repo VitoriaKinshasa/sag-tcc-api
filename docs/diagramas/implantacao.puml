@@ -1,0 +1,39 @@
+@startuml implantacao
+title SAG-TCC - Diagrama de Implantação (produção, prevista para o TP4)
+skinparam shadowing false
+
+node "Computador ou celular do usuário" <<device>> {
+  artifact "Navegador web" as NAV
+}
+
+node "Servidor em nuvem (VPS Linux)" <<device>> {
+  node "Nginx" <<executionEnvironment>> {
+    artifact "Front-end React\n(build estático)" as WEB
+  }
+  node "Node.js 20 (PM2)" <<executionEnvironment>> {
+    artifact "API SAG-TCC\n(sag-tcc-api)" as APIN
+    artifact "Agendador de prazos\n(rotina diária 7h)" as JOBN
+  }
+  folder "Armazenamento de PDFs" as ARQ
+}
+
+node "Servidor de banco de dados" <<device>> {
+  node "PostgreSQL 16" <<executionEnvironment>> {
+    database "sagtcc" as BD
+  }
+}
+
+cloud "Serviço de E-mail" as EM
+cloud "Serviço de IA" as IA
+cloud "Backup diário" as BK
+
+NAV --> WEB : HTTPS (443)
+NAV --> APIN : HTTPS /api (443, via Nginx)
+APIN --> BD : TCP 5432 (SSL)
+JOBN --> BD : TCP 5432 (SSL)
+APIN --> ARQ : leitura/gravação
+APIN --> EM : HTTPS
+JOBN --> EM : HTTPS
+APIN --> IA : HTTPS
+BD --> BK : cópia diária
+@enduml

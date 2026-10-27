@@ -1,0 +1,158 @@
+@startuml
+hide circle
+skinparam linetype ortho
+
+entity curso {
+  * id : BIGINT <<PK>>
+  --
+  * nome : VARCHAR(120)
+  * sigla : VARCHAR(10) <<UK>>
+  coordenador_id : BIGINT <<FK>>
+  * limite_orientandos : SMALLINT
+  * ativo : BOOLEAN
+}
+entity area_conhecimento {
+  * id : BIGINT <<PK>>
+  --
+  * nome : VARCHAR(120) <<UK>>
+  * ativo : BOOLEAN
+}
+entity usuario {
+  * id : BIGINT <<PK>>
+  --
+  * nome : VARCHAR(150)
+  * email : VARCHAR(150) <<UK>>
+  senha_hash : VARCHAR(100)
+  * perfil : ENUM
+  curso_id : BIGINT <<FK>>
+  matricula : VARCHAR(20) <<UK>>
+  * externo : BOOLEAN
+  instituicao : VARCHAR(150)
+  titulacao : VARCHAR(30)
+  * ativo : BOOLEAN
+  * tentativas_login : SMALLINT
+  bloqueado_ate : TIMESTAMPTZ
+  termo_aceito_em : TIMESTAMPTZ
+}
+entity professor_area {
+  * professor_id : BIGINT <<PK,FK>>
+  * area_id : BIGINT <<PK,FK>>
+}
+entity token_acesso {
+  * id : BIGINT <<PK>>
+  --
+  * usuario_id : BIGINT <<FK>>
+  * token_hash : VARCHAR(100)
+  * tipo : ENUM
+  * expira_em : TIMESTAMPTZ
+  usado_em : TIMESTAMPTZ
+}
+entity tcc {
+  * id : BIGINT <<PK>>
+  --
+  * aluno_id : BIGINT <<FK>>
+  * curso_id : BIGINT <<FK>>
+  * area_id : BIGINT <<FK>>
+  * titulo : VARCHAR(250)
+  subtitulo : VARCHAR(250)
+  * resumo : TEXT
+  orientador_id : BIGINT <<FK>>
+  coorientador_id : BIGINT <<FK>>
+  * situacao : ENUM
+  justificativa_situacao : TEXT
+  * atrasado : BOOLEAN
+  * visibilidade : ENUM
+}
+entity solicitacao_orientacao {
+  * id : BIGINT <<PK>>
+  --
+  * tcc_id : BIGINT <<FK>>
+  * professor_id : BIGINT <<FK>>
+  * status : ENUM
+  justificativa : TEXT
+  respondido_em : TIMESTAMPTZ
+}
+entity vinculo_orientacao {
+  * id : BIGINT <<PK>>
+  --
+  * tcc_id : BIGINT <<FK>>
+  * professor_id : BIGINT <<FK>>
+  * papel : ENUM
+  * inicio : TIMESTAMPTZ
+  fim : TIMESTAMPTZ
+}
+entity reuniao {
+  * id : BIGINT <<PK>>
+  --
+  * tcc_id : BIGINT <<FK>>
+  * tipo : ENUM
+  * data_hora : TIMESTAMPTZ
+  local_ou_link : VARCHAR(250)
+  resumo : TEXT
+  * criado_por : BIGINT <<FK>>
+}
+entity solicitacao_troca {
+  * id : BIGINT <<PK>>
+  --
+  * tcc_id : BIGINT <<FK>>
+  * orientador_atual_id : BIGINT <<FK>>
+  * novo_orientador_id : BIGINT <<FK>>
+  * motivo : TEXT
+  * status : ENUM
+  justificativa_decisao : TEXT
+  decidido_por : BIGINT <<FK>>
+}
+entity pedido_desistencia {
+  * id : BIGINT <<PK>>
+  --
+  * tcc_id : BIGINT <<FK>>
+  * motivo : TEXT
+  * status : ENUM
+  decidido_por : BIGINT <<FK>>
+}
+entity evento_tcc {
+  * id : BIGINT <<PK>>
+  --
+  * tcc_id : BIGINT <<FK>>
+  * tipo : VARCHAR(50)
+  * descricao : TEXT
+  autor_id : BIGINT <<FK>>
+}
+entity notificacao {
+  * id : BIGINT <<PK>>
+  --
+  * usuario_id : BIGINT <<FK>>
+  * titulo : VARCHAR(150)
+  * mensagem : TEXT
+  * lida : BOOLEAN
+}
+entity auditoria {
+  * id : BIGINT <<PK>>
+  --
+  usuario_id : BIGINT <<FK>>
+  * tabela : VARCHAR(60)
+  * registro_id : BIGINT
+  * operacao : ENUM
+  valor_anterior : JSONB
+  valor_novo : JSONB
+}
+
+curso ||--o{ usuario
+curso ||--o{ tcc
+area_conhecimento ||--o{ tcc
+usuario ||--o{ professor_area
+area_conhecimento ||--o{ professor_area
+usuario ||--o{ token_acesso
+usuario ||--o{ tcc : aluno
+usuario |o--o{ tcc : orientador
+tcc ||--o{ solicitacao_orientacao
+usuario ||--o{ solicitacao_orientacao : professor
+tcc ||--o{ vinculo_orientacao
+usuario ||--o{ vinculo_orientacao
+tcc ||--o{ reuniao
+tcc ||--o{ solicitacao_troca
+tcc ||--o{ pedido_desistencia
+tcc ||--o{ evento_tcc
+usuario ||--o{ notificacao
+usuario |o--o{ auditoria
+@enduml

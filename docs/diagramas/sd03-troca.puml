@@ -1,0 +1,63 @@
+@startuml sd03-troca
+title SD03 - Solicitar e aprovar troca de orientador (UC10 e UC11)
+skinparam shadowing false
+autonumber
+actor "Aluno" as A
+actor "Coordenação" as C
+participant "Front-end" as FE
+boundary "orientacao.routes" as RT
+control "orientacaoService" as S
+entity "Repositórios\n(tcc, orientacao)" as R
+control "Auditoria e\nNotificações (shared)" as SH
+database "PostgreSQL" as DB
+
+== UC10 - Aluno pede a troca ==
+A -> FE : escolhe o novo orientador e informa o motivo
+FE -> RT : POST /api/orientacao/trocas {novoOrientadorId, motivo}
+RT -> S : solicitarTroca(alunoId, dados)
+S -> DB : BEGIN
+S -> R : TCC em andamento do aluno (FOR UPDATE)
+alt TCC sem orientador ou mesmo orientador
+  S --> RT : erro 422
+else já existe troca pendente
+  S --> RT : erro 409
+else novo orientador inválido ou sem vaga (RD02, RD05)
+  S --> RT : erro 422
+else
+  S -> R : inserirTroca(PENDENTE)
+  R -> DB : INSERT solicitacao_troca
+  S -> SH : registrarEvento + registrarAuditoria
+  S -> SH : notificarCoordenacao(curso)
+  SH -> DB : INSERT evento_tcc, auditoria, notificacao
+  S -> DB : COMMIT
+  RT --> FE : 201 Created
+  FE --> A : "Pedido enviado. Aguarde a coordenação"
+end
+
+== UC11 - Coordenação aprova ==
+C -> FE : abre o pedido e clica em "Aprovar"
+FE -> RT : PATCH /api/orientacao/trocas/{id} {aprovar: true}
+RT -> RT : autenticar + exigirPerfil(COORDENACAO)
+RT -> S : decidirTroca(coordenacao, id, dados)
+S -> DB : BEGIN
+S -> R : buscarTroca(id) FOR UPDATE + TCC FOR UPDATE
+alt já decidida
+  S --> RT : erro 409
+else coordenação de outro curso
+  S --> RT : erro 403
+else
+  S -> R : confere novo orientador (RD02, RD05)
+  S -> R : decidirTroca(APROVADA)
+  S -> R : encerrarVinculos(tcc, ORIENTADOR)
+  note right : RD14 - o orientador anterior\nfica no histórico (fim preenchido)
+  S -> R : iniciarVinculo(tcc, novo, ORIENTADOR)
+  S -> R : trocarOrientador(tcc, novo)
+  R -> DB : UPDATE solicitacao_troca, UPDATE vinculo_orientacao,\nINSERT vinculo_orientacao, UPDATE tcc
+  S -> SH : registrarEvento + registrarAuditoria
+  S -> SH : notificar(aluno, orientador anterior, novo orientador)
+  SH -> DB : INSERT evento_tcc, auditoria, notificacao (3x)
+  S -> DB : COMMIT
+  RT --> FE : 200 OK
+  FE --> C : "Troca aprovada"
+end
+@enduml
