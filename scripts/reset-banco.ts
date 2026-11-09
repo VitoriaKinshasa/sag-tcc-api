@@ -2,10 +2,6 @@ import 'dotenv/config';
 import fs from 'node:fs';
 import pg from 'pg';
 
-/**
- * Apaga e recria o banco de DESENVOLVIMENTO (DATABASE_URL) com as tabelas e os usuários de exemplo.
- * Uso: npm run db:reset
- */
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error('Defina DATABASE_URL no arquivo .env');
 
