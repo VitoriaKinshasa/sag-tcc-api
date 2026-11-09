@@ -1,5 +1,5 @@
 -- =====================================================================
--- SAG-TCC – Usuários de exemplo para testar a API (rodar DEPOIS do schema.sql)
+-- SAG-TCC – Usuários de exemplo para testar a API 
 -- Senha de todos: Senha@123
 -- =====================================================================
 INSERT INTO usuario (nome, email, senha_hash, perfil, curso_id, matricula, termo_aceito_em) VALUES
