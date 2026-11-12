@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SAG-TCC – Tela de testes</title>
+<style>
+  :root {
+    --azul: #1f4e79; --azul-claro: #e8f0f8; --verde: #1e7d4f; --verde-claro: #e6f4ec;
+    --vermelho: #b42318; --vermelho-claro: #fdecea; --amarelo: #8a6100; --amarelo-claro: #fff6dc;
+    --cinza: #5b6470; --borda: #d9dee5; --fundo: #f4f6f9; --texto: #1d2430;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: var(--fundo); color: var(--texto); font-size: 15px; }
+  header { background: var(--azul); color: #fff; padding: 12px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  header h1 { font-size: 18px; margin: 0; flex: 1; }
+  header h1 small { font-weight: normal; opacity: .8; font-size: 13px; margin-left: 6px; }
+  header .usuario { font-size: 14px; }
+  header button { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.4); }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 120px; }
+  nav.abas { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+  nav.abas button { background: #fff; color: var(--azul); border: 1px solid var(--borda); }
+  nav.abas button.ativa { background: var(--azul); color: #fff; border-color: var(--azul); }
+  .cartao { background: #fff; border: 1px solid var(--borda); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
+  .cartao h2 { font-size: 17px; margin: 0 0 4px; color: var(--azul); }
+  .cartao h3 { font-size: 15px; margin: 16px 0 8px; }
+  .dica { color: var(--cinza); font-size: 13px; margin: 0 0 12px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 10px 0 4px; }
+  input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--borda); border-radius: 6px; font: inherit; background: #fff; }
+  textarea { min-height: 90px; resize: vertical; }
+  .linha { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 14px; }
+  button { font: inherit; padding: 8px 14px; border-radius: 6px; border: 1px solid var(--azul); background: var(--azul); color: #fff; cursor: pointer; }
+  button:hover { filter: brightness(1.08); }
+  button.sec { background: #fff; color: var(--azul); }
+  button.verde { background: var(--verde); border-color: var(--verde); }
+  button.vermelho { background: var(--vermelho); border-color: var(--vermelho); }
+  button.peq { padding: 4px 10px; font-size: 13px; }
+  .acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--borda); vertical-align: top; }
+  th { background: var(--azul-claro); color: var(--azul); font-size: 13px; }
+  .vazio { color: var(--cinza); font-style: italic; padding: 8px 0; }
+  .selo { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--azul-claro); color: var(--azul); }
+  .selo.verde { background: var(--verde-claro); color: var(--verde); }
+  .selo.vermelho { background: var(--vermelho-claro); color: var(--vermelho); }
+  .selo.amarelo { background: var(--amarelo-claro); color: var(--amarelo); }
+  .grade-usuarios { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+  .grade-usuarios .curso { border: 1px solid var(--borda); border-radius: 8px; padding: 10px; }
+  .grade-usuarios .curso b { display: block; margin-bottom: 6px; color: var(--azul); font-size: 13px; }
+  .grade-usuarios button { display: block; width: 100%; text-align: left; margin-bottom: 4px; background: #fff; color: var(--texto); border-color: var(--borda); font-size: 13px; }
+  .grade-usuarios button span { color: var(--cinza); font-size: 12px; }
+  .linha-tempo { list-style: none; padding: 0; margin: 0; border-left: 3px solid var(--azul-claro); }
+  .linha-tempo li { padding: 6px 0 10px 16px; position: relative; }
+  .linha-tempo li::before { content: ""; position: absolute; left: -7px; top: 11px; width: 11px; height: 11px; border-radius: 50%; background: var(--azul); }
+  .linha-tempo small { color: var(--cinza); display: block; }
+  .notif { padding: 10px; border-bottom: 1px solid var(--borda); }
+  .notif.nao-lida { background: var(--azul-claro); }
+  .notif small { color: var(--cinza); }
+  #avisos { position: fixed; top: 14px; right: 14px; display: flex; flex-direction: column; gap: 8px; z-index: 20; max-width: 380px; }
+  .aviso { padding: 12px 14px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,.15); background: #fff; border-left: 5px solid var(--verde); font-size: 14px; }
+  .aviso.erro { border-left-color: var(--vermelho); }
+  .aviso .regra { display: inline-block; margin-top: 6px; background: var(--vermelho-claro); color: var(--vermelho); padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+  #registro { position: fixed; bottom: 0; left: 0; right: 0; background: #1d2430; color: #d7dde6; font-family: Consolas, monospace; font-size: 12px; z-index: 10; }
+  #registro summary { padding: 8px 14px; cursor: pointer; color: #fff; font-family: "Segoe UI", Arial, sans-serif; font-size: 13px; }
+  #registro pre { margin: 0; padding: 0 14px 12px; max-height: 220px; overflow: auto; white-space: pre-wrap; }
+  .termo { background: var(--amarelo-claro); border: 1px solid #f0d58a; }
+  .oculto { display: none !important; }
+  .membro-linha { display: grid; grid-template-columns: 1fr 160px; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--borda); }
+  .banca { border-left: 4px solid var(--azul); }
+  .banca.REALIZADA { border-left-color: var(--verde); }
+  .banca.CANCELADA { border-left-color: var(--vermelho); opacity: .75; }
+  .rolagem { overflow-x: auto; }
+  .etapas td input { min-width: 0; }
+  @media (max-width: 640px) { .etapas td, .etapas th { padding: 6px 3px; } .etapas td input { padding: 6px 2px; font-size: 13px; } }
+  .ata { font-family: Georgia, "Times New Roman", serif; line-height: 1.5; }
+  .ata h2 { text-align: center; color: var(--texto); font-size: 18px; }
+  .ata .assinaturas { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px 20px; margin-top: 40px; }
+  .ata .assinaturas div { border-top: 1px solid #333; padding-top: 4px; text-align: center; font-size: 13px; }
+  @media print {
+    body * { visibility: hidden; }
+    .ata, .ata * { visibility: visible; }
+    .ata { position: absolute; left: 0; top: 0; width: 100%; border: none; }
+    .ata .acoes { display: none; }
+  }
+  @media (max-width: 640px) {
+    th:nth-child(n+4), td:nth-child(n+4) { display: none; }
+    header h1 small { display: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>SAG-TCC <small>Tela de testes da API (TP2 e TP3)</small></h1>
+  <span class="usuario" id="cabecalho-usuario"></span>
+  <button id="btn-sair" class="peq oculto">Sair</button>
+</header>
+<main id="app"></main>
+<div id="avisos"></div>
+<details id="registro"><summary>Registro da API (o que a tela enviou e o que a API respondeu)</summary><pre id="registro-texto">Nenhuma chamada ainda.</pre></details>
+
+<script>
+// ---------------------------------------------------------------------------
+// Utilitários
+// ---------------------------------------------------------------------------
+const $app = document.getElementById('app');
+const sessao = {
+  get() { try { return JSON.parse(sessionStorage.getItem('sagtcc') || 'null'); } catch { return null; } },
+  set(v) { try { sessionStorage.setItem('sagtcc', JSON.stringify(v)); } catch {} },
+  limpar() { try { sessionStorage.removeItem('sagtcc'); } catch {} },
+};
+let estado = { usuario: null, token: null, termoPendente: false, aba: null };
+
+/** Cria um elemento: h('div', {class:'x', onclick:fn}, 'texto', filho...) */
+function h(tag, attrs = {}, ...filhos) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (k === 'class') el.className = v;
+    else if (k === 'value') el.value = v;
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const f of filhos.flat()) if (f !== null && f !== undefined && f !== false) el.append(f instanceof Node ? f : document.createTextNode(String(f)));
+  return el;
+}
+const campo = (rotulo, input) => h('div', {}, h('label', {}, rotulo), input);
+const dataBR = (v) => v ? new Date(v).toLocaleString('pt-BR', { timeZone: 'America/Manaus', dateStyle: 'short', timeStyle: 'short' }) : '-';
+
+function aviso(texto, tipo = 'ok', regra) {
+  const el = h('div', { class: 'aviso' + (tipo === 'erro' ? ' erro' : '') }, texto, regra ? h('div', {}, h('span', { class: 'regra' }, 'Regra ' + regra)) : null);
+  document.getElementById('avisos').append(el);
+  setTimeout(() => el.remove(), tipo === 'erro' ? 7000 : 4000);
+}
+
+const registro = [];
+function registrar(metodo, url, corpo, status, resposta) {
+  registro.unshift(`${new Date().toLocaleTimeString('pt-BR')}  ${metodo} ${url}  →  ${status}\n` +
+    (corpo ? `  enviado:  ${JSON.stringify(corpo)}\n` : '') + `  resposta: ${JSON.stringify(resposta, null, 1).slice(0, 1500)}\n`);
+  document.getElementById('registro-texto').textContent = registro.slice(0, 30).join('\n');
+}
+
+/** Chama a API. Em erro, mostra a mensagem e a regra (RD/RF/RNF) e devolve null. */
+async function api(metodo, url, corpo, { silencioso = false, devolverErro = false } = {}) {
+  const opcoes = { method: metodo, headers: {} };
+  if (estado.token) opcoes.headers.Authorization = 'Bearer ' + estado.token;
+  if (corpo !== undefined) { opcoes.headers['Content-Type'] = 'application/json'; opcoes.body = JSON.stringify(corpo); }
+  let res, dados;
+  try {
+    res = await fetch('/api' + url, opcoes);
+    dados = await res.json().catch(() => ({}));
+  } catch {
+    aviso('Não foi possível falar com a API. Ela está ligada (npm run dev)?', 'erro');
+    return null;
+  }
+  registrar(metodo, '/api' + url, corpo, res.status, dados);
+  if (!res.ok) {
+    if (res.status === 401 && estado.token && url !== '/auth/login') { sair(); aviso('Sessão expirada. Entre de novo.', 'erro'); return null; }
+    if (devolverErro) return { erro: true, status: res.status, ...dados };
+    if (!silencioso) aviso(dados.erro || `Erro ${res.status}`, 'erro', dados.regra);
+    return null;
+  }
+  return dados;
+}
+
+const SITUACOES = {
+  EM_PROPOSTA: ['Em proposta', 'amarelo'], EM_DESENVOLVIMENTO: ['Em desenvolvimento', ''], APTO_DEFESA: ['Apto à defesa', ''],
+  APROVADO: ['Aprovado', 'verde'], APROVADO_PUBLICACAO: ['Aprovado por publicação', 'verde'],
+  REPROVADO: ['Reprovado', 'vermelho'], NAO_APRESENTADO: ['Não apresentado', 'vermelho'], CANCELADO: ['Cancelado', 'vermelho'],
+};
+const seloSituacao = (s) => { const [t, c] = SITUACOES[s] || [s, '']; return h('span', { class: 'selo ' + c }, t); };
+const STATUS = { PENDENTE: 'amarelo', ACEITA: 'verde', APROVADA: 'verde', RECUSADA: 'vermelho' };
+const seloStatus = (s) => h('span', { class: 'selo ' + (STATUS[s] || '') }, s.charAt(0) + s.slice(1).toLowerCase());
+const PERFIS = { COORDENACAO: 'Coordenação', ORIENTADOR: 'Orientador(a)', ALUNO: 'Aluno(a)', MEMBRO_BANCA: 'Membro de banca' };
+
+function tabela(colunas, linhas, vazio = 'Nada por aqui.') {
+  if (!linhas.length) return h('div', { class: 'vazio' }, vazio);
+  return h('table', {}, h('thead', {}, h('tr', {}, colunas.map((c) => h('th', {}, c)))),
+    h('tbody', {}, linhas.map((l) => h('tr', {}, l.map((c) => h('td', {}, c ?? '-'))))));
+}
+
+// ---------------------------------------------------------------------------
+// Login, recuperar senha e definir senha
+// ---------------------------------------------------------------------------
+const EXEMPLOS = [
+  ['Sistemas de Informação (SI)', [['Profa. Marcela Pessoa', 'msppessoa@uea.edu.br', 'Coordenação'], ['Profa. Elloa Guedes', 'ebgcosta@uea.edu.br', 'Orientadora'], ['Prof. Fábio Santos', 'fssilva@uea.edu.br', 'Orientador'], ['Carla Mendes', 'cm.snf22@uea.edu.br', 'Aluna'], ['Diego Rocha', 'dr.snf22@uea.edu.br', 'Aluno']]],
+  ['Engenharia de Computação (EC)', [['Profa. Áurea Melo', 'asmelo@uea.edu.br', 'Coordenação'], ['Prof. Tiago de Melo', 'tmelo@uea.edu.br', 'Orientador'], ['Profa. Polianny Lima', 'palima@uea.edu.br', 'Orientadora'], ['Gabriel Nunes', 'gn.eng22@uea.edu.br', 'Aluno'], ['Helena Prado', 'hp.eng22@uea.edu.br', 'Aluna']]],
+  ['Licenciatura em Computação (LC)', [['Profa. Danielle Valente', 'dvalente@uea.edu.br', 'Coordenação'], ['Prof. Almir Oliveira', 'adjunior@uea.edu.br', 'Orientador'], ['Profa. Danielle Noronha', 'dnoronha@uea.edu.br', 'Orientadora'], ['Karen Oliveira', 'ko.lic22@uea.edu.br', 'Aluna'], ['Lucas Ferreira', 'lf.lic22@uea.edu.br', 'Aluno']]],
+  ['Membro de banca externo', [['Dr. Rafael Costa (UFAM)', 'rcosta.externo@exemplo.com', 'Membro de banca']]],
+];
+
+function telaLogin() {
+  const email = h('input', { type: 'email', placeholder: 'seu.email@uea.edu.br', autocomplete: 'username' });
+  const senha = h('input', { type: 'password', placeholder: 'Sua senha', autocomplete: 'current-password' });
+  const entrar = async (e) => {
+    e?.preventDefault();
+    const r = await api('POST', '/auth/login', { email: email.value, senha: senha.value });
+    if (!r) return;
+    let cursoId = null;
+    try { cursoId = JSON.parse(atob(r.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).cursoId ?? null; } catch {}
+    estado = { usuario: { ...r.usuario, cursoId }, token: r.token, termoPendente: r.termoPendente, aba: null };
+    sessao.set(estado);
+    aviso('Bem-vindo(a), ' + r.usuario.nome + '!');
+    render();
+  };
+  $app.replaceChildren(
+    h('div', { class: 'cartao' },
+      h('h2', {}, 'Entrar (UC01)'),
+      h('p', { class: 'dica' }, 'Cada usuário cria a própria senha pelo link de primeiro acesso. Os usuários de exemplo abaixo já têm a senha Senha@123.'),
+      h('form', { onsubmit: entrar }, h('div', { class: 'linha' }, campo('E-mail', email), campo('Senha', senha)),
+        h('div', { class: 'acoes' }, h('button', { type: 'submit' }, 'Entrar'),
+          h('button', { type: 'button', class: 'sec', onclick: () => telaRecuperar(email.value) }, 'Esqueci minha senha'),
+          h('button', { type: 'button', class: 'sec', onclick: async () => $app.replaceChildren(await cartaoAgenda(true)) }, 'Agenda pública de defesas')))),
+    h('div', { class: 'cartao' },
+      h('h2', {}, 'Usuários de exemplo'),
+      h('p', { class: 'dica' }, 'Clique em um nome para preencher o e-mail e a senha (Senha@123).'),
+      h('div', { class: 'grade-usuarios' }, EXEMPLOS.map(([curso, pessoas]) => h('div', { class: 'curso' }, h('b', {}, curso),
+        pessoas.map(([nome, mail, papel]) => h('button', { type: 'button', onclick: () => { email.value = mail; senha.value = 'Senha@123'; senha.focus(); } },
+          nome + ' ', h('span', {}, '· ' + papel))))))),
+  );
+}
+
+function telaRecuperar(emailInicial = '') {
+  const email = h('input', { type: 'email', value: emailInicial });
+  $app.replaceChildren(h('div', { class: 'cartao' },
+    h('h2', {}, 'Recuperar senha (UC02)'),
+    h('p', { class: 'dica' }, 'O sistema envia um link por e-mail. Nesta versão, o e-mail aparece no terminal onde a API está rodando (npm run dev). Copie o link de lá e abra no navegador.'),
+    campo('E-mail', email),
+    h('div', { class: 'acoes' },
+      h('button', { onclick: async () => { const r = await api('POST', '/auth/recuperar-senha', { email: email.value }); if (r) aviso(r.mensagem); } }, 'Enviar link'),
+      h('button', { class: 'sec', onclick: telaLogin }, 'Voltar'))));
+}
+
+function telaDefinirSenha(token) {
+  const s1 = h('input', { type: 'password', autocomplete: 'new-password' });
+  const s2 = h('input', { type: 'password', autocomplete: 'new-password' });
+  $app.replaceChildren(h('div', { class: 'cartao' },
+    h('h2', {}, 'Criar minha senha'),
+    h('p', { class: 'dica' }, 'Escolha a sua senha (mínimo de 8 caracteres). O link só pode ser usado uma vez.'),
+    h('div', { class: 'linha' }, campo('Nova senha', s1), campo('Repita a senha', s2)),
+    h('div', { class: 'acoes' }, h('button', { onclick: async () => {
+      if (s1.value !== s2.value) return aviso('As senhas não são iguais.', 'erro');
+      const r = await api('POST', '/auth/definir-senha', { token, novaSenha: s1.value });
+      if (r) { aviso(r.mensagem || 'Senha definida. Faça login.'); history.replaceState(null, '', '/'); telaLogin(); }
+    } }, 'Salvar senha'))));
+}
+
+function sair() {
+  estado = { usuario: null, token: null, termoPendente: false, aba: null };
+  sessao.limpar();
+  render();
+}
+
+// ---------------------------------------------------------------------------
+// Estrutura logada: abas por perfil
+// ---------------------------------------------------------------------------
+const ABAS = {
+  ALUNO: [['tcc', 'Meu TCC'], ['defesa', 'Minha defesa'], ['agenda', 'Agenda de defesas'], ['notificacoes', 'Notificações']],
+  ORIENTADOR: [['solicitacoes', 'Solicitações recebidas'], ['orientandos', 'Meus orientandos'], ['versoes', 'Versões para parecer'], ['bancas', 'Bancas'], ['desistencias', 'Desistências'], ['areas', 'Minhas áreas'], ['agenda', 'Agenda de defesas'], ['notificacoes', 'Notificações']],
+  MEMBRO_BANCA: [['bancas', 'Bancas'], ['agenda', 'Agenda de defesas'], ['notificacoes', 'Notificações']],
+  COORDENACAO: [['usuarios', 'Usuários'], ['cursos', 'Cursos e áreas'], ['calendario', 'Calendário'], ['tccsCurso', 'TCCs do curso'], ['publicacoes', 'Publicações'], ['trocas', 'Trocas de orientador'], ['desistencias', 'Desistências'], ['agenda', 'Agenda de defesas'], ['notificacoes', 'Notificações']],
+};
+const TELAS = {};
+
+async function render() {
+  const cab = document.getElementById('cabecalho-usuario');
+  const btnSair = document.getElementById('btn-sair');
+  const token = new URLSearchParams(location.search).get('token');
+  if (location.pathname === '/definir-senha' && token) { cab.textContent = ''; btnSair.classList.add('oculto'); return telaDefinirSenha(token); }
+  if (!estado.token) { cab.textContent = ''; btnSair.classList.add('oculto'); return telaLogin(); }
+
+  cab.textContent = `${estado.usuario.nome} · ${PERFIS[estado.usuario.perfil] || estado.usuario.perfil}`;
+  btnSair.classList.remove('oculto');
+  const abas = ABAS[estado.usuario.perfil] || [['notificacoes', 'Notificações']];
+  if (!estado.aba || !abas.some(([id]) => id === estado.aba)) estado.aba = abas[0][0];
+
+  const conteudo = h('div', {}, h('div', { class: 'vazio' }, 'Carregando...'));
+  $app.replaceChildren(...[
+    estado.termoPendente ? h('div', { class: 'cartao termo' },
+      h('h2', {}, 'Termo de uso e privacidade (RNF15)'),
+      h('p', { class: 'dica' }, 'No primeiro acesso é preciso aceitar o termo de uso dos dados pessoais.'),
+      h('button', { onclick: async () => { if (await api('POST', '/auth/aceitar-termo')) { estado.termoPendente = false; sessao.set(estado); aviso('Termo aceito.'); render(); } } }, 'Li e aceito o termo')) : null,
+    h('nav', { class: 'abas' }, abas.map(([id, nome]) => h('button', { class: id === estado.aba ? 'ativa' : '', onclick: () => { estado.aba = id; sessao.set(estado); render(); } }, nome))),
+    conteudo,
+  ].filter(Boolean));
+  conteudo.replaceChildren(...[await TELAS[estado.aba]()].flat(Infinity).filter(Boolean));
+}
+const recarregar = () => render();
+
+// ---------------------------------------------------------------------------
+// Compartilhado: histórico e notificações
+// ---------------------------------------------------------------------------
+async function cartaoHistorico(tccId, titulo) {
+  const eventos = await api('GET', `/tccs/${tccId}/historico`) || [];
+  return h('div', { class: 'cartao' }, h('h2', {}, 'Histórico do TCC (RF36)'), h('p', { class: 'dica' }, titulo || ''),
+    eventos.length ? h('ul', { class: 'linha-tempo' }, eventos.map((e) => h('li', {},
+      h('b', {}, e.descricao || e.tipo), h('small', {}, `${dataBR(e.criado_em)} · ${e.autor || 'Sistema'}`)))) : h('div', { class: 'vazio' }, 'Sem eventos.'));
+}
+
+TELAS.notificacoes = async () => {
+  const lista = await api('GET', '/notificacoes') || [];
+  const naoLidas = lista.filter((n) => !n.lida).length;
+  return h('div', { class: 'cartao' }, h('h2', {}, `Notificações (RF37) – ${naoLidas} não lida(s)`),
+    h('p', { class: 'dica' }, 'Cada aviso também é enviado por e-mail (nesta versão, aparece no terminal da API).'),
+    lista.length ? lista.map((n) => h('div', { class: 'notif' + (n.lida ? '' : ' nao-lida') },
+      h('b', {}, n.titulo), h('div', {}, n.mensagem), h('small', {}, dataBR(n.criado_em) + ' '),
+      n.lida ? null : h('button', { class: 'peq sec', onclick: async () => { if (await api('PATCH', `/notificacoes/${n.id}/lida`)) recarregar(); } }, 'Marcar como lida')))
+      : h('div', { class: 'vazio' }, 'Nenhuma notificação.'));
+};
+
+// ---------------------------------------------------------------------------
+// ALUNO
+// ---------------------------------------------------------------------------
+TELAS.tcc = async () => {
+  const areas = await api('GET', '/areas') || [];
+  const tcc = await api('GET', '/tccs/meu', undefined, { silencioso: true });
+  if (!tcc) return formularioProposta(areas);
+
+  const orientadores = await api('GET', '/orientacao/orientadores') || [];
+  const nomeProf = (id) => orientadores.find((o) => Number(o.id) === Number(id))?.nome || (id ? `#${id}` : 'Ainda sem orientador');
+  const area = areas.find((a) => Number(a.id) === Number(tcc.area_id))?.nome;
+  const cartoes = [h('div', { class: 'cartao' },
+    h('h2', {}, tcc.titulo), tcc.subtitulo ? h('p', { class: 'dica' }, tcc.subtitulo) : null,
+    h('p', {}, seloSituacao(tcc.situacao), '  ', h('span', { class: 'selo' }, area || 'Área'), tcc.atrasado ? ['  ', h('span', { class: 'selo vermelho' }, 'Atrasado')] : null),
+    h('p', {}, h('b', {}, 'Orientador: '), nomeProf(tcc.orientador_id), tcc.coorientador_id ? ['  ·  ', h('b', {}, 'Coorientador: '), nomeProf(tcc.coorientador_id)] : null),
+    h('p', { class: 'dica' }, tcc.resumo))];
+
+  const aprovado = ['APROVADO', 'APROVADO_PUBLICACAO'].includes(tcc.situacao);
+  if (aprovado) {
+    cartoes.push(await cartaoPrazos(tcc));
+    cartoes.push(cartaoEnviarVersao(tcc, true));
+    cartoes.push(await cartaoVersoes(tcc));
+  } else if (!tcc.orientador_id) {
+    cartoes.push(formularioProposta(areas, tcc));
+    cartoes.push(await cartaoBuscarOrientadores(areas, tcc));
+  } else {
+    cartoes.push(await cartaoPrazos(tcc));
+    cartoes.push(cartaoEnviarVersao(tcc, false));
+    cartoes.push(await cartaoVersoes(tcc));
+    cartoes.push(cartaoTroca(orientadores, tcc));
+    cartoes.push(cartaoPublicacao(tcc));
+  }
+  if (!aprovado) cartoes.push(cartaoDesistencia());
+  cartoes.push(await cartaoHistorico(tcc.id, tcc.titulo));
+  return cartoes;
+};
+
+function formularioProposta(areas, tcc) {
+  const titulo = h('input', { value: tcc?.titulo || '', maxlength: 250 });
+  const subtitulo = h('input', { value: tcc?.subtitulo || '', maxlength: 250 });
+  const resumo = h('textarea', {}); resumo.value = tcc?.resumo || '';
+  const contador = h('small', { class: 'dica' });
+  const contar = () => { const n = resumo.value.trim().split(/\s+/).filter(Boolean).length; contador.textContent = `${n} de 250 palavras`; contador.style.color = n > 250 ? 'var(--vermelho)' : ''; };
+  resumo.addEventListener('input', contar); contar();
+  const area = h('select', {}, h('option', { value: '' }, 'Selecione...'), areas.map((a) => h('option', { value: a.id, selected: Number(tcc?.area_id) === Number(a.id) }, a.nome)));
+  const enviar = async () => {
+    const corpo = { titulo: titulo.value, subtitulo: subtitulo.value || null, resumo: resumo.value, areaId: Number(area.value) || undefined };
+    const r = tcc ? await api('PUT', `/tccs/${tcc.id}`, corpo) : await api('POST', '/tccs', corpo);
+    if (r) { aviso(tcc ? 'Proposta atualizada.' : 'Proposta enviada! Agora escolha um orientador.'); recarregar(); }
+  };
+  return h('div', { class: 'cartao' },
+    h('h2', {}, tcc ? 'Editar proposta (UC06 – antes do aceite)' : 'Enviar proposta de TCC (UC06)'),
+    h('p', { class: 'dica' }, tcc ? 'A proposta só pode ser editada enquanto nenhum orientador aceitou.' : 'Você ainda não tem TCC em andamento. Cada aluno pode ter só um TCC ativo (RD01).'),
+    campo('Título', titulo), campo('Subtítulo (opcional)', subtitulo), campo('Resumo', resumo), contador, campo('Área do conhecimento', area),
+    h('div', { class: 'acoes' }, h('button', { onclick: enviar }, tcc ? 'Salvar alterações' : 'Enviar proposta')));
+}
+
+async function cartaoBuscarOrientadores(areas, tcc) {
+  const filtro = h('select', {}, h('option', { value: '' }, 'Todas as áreas'), areas.map((a) => h('option', { value: a.id, selected: Number(a.id) === Number(tcc.area_id) }, a.nome)));
+  const lista = h('div');
+  const carregar = async () => {
+    const os = await api('GET', '/orientacao/orientadores' + (filtro.value ? `?areaId=${filtro.value}` : '')) || [];
+    lista.replaceChildren(tabela(['Orientador', 'Curso', 'Áreas', 'Orientandos', ''], os.map((o) => [
+      o.nome, o.curso, (o.areas || []).join(', '), `${o.orientandos} de ${o.limite}`,
+      o.disponivel ? h('button', { class: 'peq verde', onclick: async () => { if (await api('POST', '/orientacao/solicitacoes', { professorId: Number(o.id) })) { aviso('Solicitação enviada a ' + o.nome + '.'); recarregar(); } } }, 'Solicitar orientação')
+        : h('span', { class: 'selo vermelho' }, 'Sem vagas (RD05)')]), 'Nenhum orientador com essa área.'));
+  };
+  filtro.addEventListener('change', carregar);
+  await carregar();
+  return h('div', { class: 'cartao' }, h('h2', {}, 'Escolher orientador (UC07)'),
+    h('p', { class: 'dica' }, 'Só é possível ter uma solicitação pendente por vez (RD04). Se for recusada, você pode pedir a outro professor.'),
+    campo('Filtrar por área', filtro), lista);
+}
+
+function cartaoTroca(orientadores, tcc) {
+  const novo = h('select', {}, h('option', { value: '' }, 'Selecione...'),
+    orientadores.filter((o) => Number(o.id) !== Number(tcc.orientador_id)).map((o) => h('option', { value: o.id }, `${o.nome} (${o.curso})${o.disponivel ? '' : ' – sem vagas'}`)));
+  const motivo = h('textarea', { placeholder: 'Por que você quer trocar de orientador?' });
+  return h('div', { class: 'cartao' }, h('h2', {}, 'Pedir troca de orientador (UC10)'),
+    h('p', { class: 'dica' }, 'O pedido vai para a coordenação do seu curso. Só pode haver um pedido aguardando por vez.'),
+    campo('Novo orientador', novo), campo('Motivo', motivo),
+    h('div', { class: 'acoes' }, h('button', { onclick: async () => {
+      if (await api('POST', '/orientacao/trocas', { novoOrientadorId: Number(novo.value) || undefined, motivo: motivo.value })) { aviso('Pedido de troca enviado à coordenação.'); recarregar(); }
+    } }, 'Enviar pedido de troca')));
+}
+
+function cartaoDesistencia() {
+  const motivo = h('textarea', { placeholder: 'Explique o motivo da desistência' });
+  return h('div', { class: 'cartao' }, h('h2', {}, 'Desistir do TCC (UC12)'),
+    h('p', { class: 'dica' }, 'O pedido precisa ser confirmado pelo orientador ou pela coordenação. Depois disso o TCC é cancelado.'),
+    campo('Motivo', motivo),
+    h('div', { class: 'acoes' }, h('button', { class: 'vermelho', onclick: async () => {
+      if (!confirm('Tem certeza de que quer pedir a desistência do TCC?')) return;
+      if (await api('POST', '/orientacao/desistencias', { motivo: motivo.value })) { aviso('Pedido de desistência enviado.'); recarregar(); }
+    } }, 'Pedir desistência')));
+}
+
+// ---------------------------------------------------------------------------
+// ORIENTADOR
+// ---------------------------------------------------------------------------
+TELAS.solicitacoes = async () => {
+  const lista = await api('GET', '/orientacao/solicitacoes/recebidas') || [];
+  const responder = async (s, aceitar) => {
+    let corpo = { aceitar };
+    if (!aceitar) {
+      const j = prompt('Justificativa da recusa (obrigatória):');
+      if (j === null) return;
+      corpo.justificativa = j;
+    }
+    if (await api('PATCH', `/orientacao/solicitacoes/${s.id}`, corpo)) { aviso(aceitar ? 'Orientação aceita. O TCC está em desenvolvimento.' : 'Solicitação recusada.'); recarregar(); }
+  };
+  return h('div', { class: 'cartao' }, h('h2', {}, 'Solicitações de orientação (UC08)'),
+    h('p', { class: 'dica' }, 'Ao aceitar, o TCC passa para "Em desenvolvimento". A recusa exige justificativa. O limite de orientandos do curso é conferido no aceite (RD05).'),
+    tabela(['Aluno(a)', 'TCC', 'Área', 'Data', 'Situação', ''], lista.map((s) => [
+      s.aluno, h('div', {}, h('b', {}, s.titulo), h('div', { class: 'dica' }, s.resumo)), s.area, dataBR(s.criado_em), seloStatus(s.status),
+      s.status === 'PENDENTE' ? h('div', { class: 'acoes' }, h('button', { class: 'peq verde', onclick: () => responder(s, true) }, 'Aceitar'),
+        h('button', { class: 'peq vermelho', onclick: () => responder(s, false) }, 'Recusar')) : '']), 'Nenhuma solicitação recebida.'));
+};
+
+TELAS.orientandos = async () => {
+  const lista = await api('GET', '/orientacao/orientandos') || [];
+  const detalhe = h('div');
+  const abrir = async (t, tipo) => {
+    if (tipo === 'historico') return detalhe.replaceChildren(await cartaoHistorico(t.id, t.titulo));
+    if (tipo === 'situacao') return detalhe.replaceChildren(cartaoSituacao(t, () => { aviso('Situação alterada. O aluno foi avisado.'); recarregar(); }));
+    if (tipo === 'banca') return detalhe.replaceChildren(await cartaoNovaBanca(t));
+    if (tipo === 'reuniao') {
+      const quando = h('input', { type: 'datetime-local' });
+      const local = h('input', { placeholder: 'Ex.: Sala 10 – EST ou link do Meet' });
+      const agendar = async (confirmarConflito) => {
+        if (!quando.value) return aviso('Informe a data e a hora.', 'erro');
+        const corpo = { dataHora: new Date(quando.value).toISOString(), localOuLink: local.value, ...(confirmarConflito ? { confirmarConflito: true } : {}) };
+        const r = await api('POST', `/orientacao/tccs/${t.id}/reunioes`, corpo, { devolverErro: true });
+        if (r?.erro && r.status === 409 && !confirmarConflito) {
+          if (confirm(r.erro + '\n\nDeseja agendar mesmo assim?')) return agendar(true);
+          return;
+        }
+        if (r?.erro) return aviso(r.erro, 'erro', r.regra);
+        if (r) { aviso('Reunião agendada. O aluno foi avisado.'); detalhe.replaceChildren(); }
+      };
+      return detalhe.replaceChildren(h('div', { class: 'cartao' }, h('h2', {}, 'Agendar reunião de alinhamento (UC09)'), h('p', { class: 'dica' }, t.titulo + ' – ' + t.aluno),
+        h('div', { class: 'linha' }, campo('Data e hora', quando), campo('Local ou link', local)),
+        h('div', { class: 'acoes' }, h('button', { onclick: () => agendar(false) }, 'Agendar'))));
+    }
+    if (tipo === 'encontro') {
+      const data = h('input', { type: 'datetime-local' });
+      const resumo = h('textarea', { placeholder: 'O que foi conversado e os próximos passos' });
+      return detalhe.replaceChildren(h('div', { class: 'cartao' }, h('h2', {}, 'Registrar encontro de orientação (UC09 – RF16)'), h('p', { class: 'dica' }, t.titulo + ' – ' + t.aluno),
+        campo('Data do encontro', data), campo('Resumo / encaminhamentos', resumo),
+        h('div', { class: 'acoes' }, h('button', { onclick: async () => {
+          if (!data.value) return aviso('Informe a data.', 'erro');
+          if (await api('POST', `/orientacao/tccs/${t.id}/encontros`, { data: new Date(data.value).toISOString(), resumo: resumo.value })) { aviso('Encontro registrado no histórico.'); abrir(t, 'historico'); }
+        } }, 'Registrar encontro'))));
+    }
+  };
+  return [h('div', { class: 'cartao' }, h('h2', {}, 'Meus orientandos'),
+    h('p', { class: 'dica' }, 'TCCs em andamento que você orienta ou coorienta. Só o orientador agenda reuniões e registra encontros (RD15). Para cadastrar a banca, primeiro altere a situação para "Apto à defesa" (RD07).'),
+    tabela(['Aluno(a)', 'TCC', 'Situação', 'Papel', ''], lista.map((t) => [t.aluno, h('b', {}, t.titulo), h('span', {}, seloSituacao(t.situacao), t.atrasado ? [' ', h('span', { class: 'selo vermelho' }, 'Atrasado')] : null), t.papel === 'ORIENTADOR' ? 'Orientador' : 'Coorientador',
+      h('div', { class: 'acoes' },
+        t.papel === 'ORIENTADOR' ? h('button', { class: 'peq', onclick: () => abrir(t, 'reuniao') }, 'Agendar reunião') : null,
+        t.papel === 'ORIENTADOR' ? h('button', { class: 'peq', onclick: () => abrir(t, 'encontro') }, 'Registrar encontro') : null,
+        t.papel === 'ORIENTADOR' ? h('button', { class: 'peq sec', onclick: () => abrir(t, 'situacao') }, 'Alterar situação') : null,
+        t.papel === 'ORIENTADOR' && t.situacao === 'APTO_DEFESA' ? h('button', { class: 'peq verde', onclick: () => abrir(t, 'banca') }, 'Cadastrar banca') : null,
+        h('button', { class: 'peq sec', onclick: () => abrir(t, 'historico') }, 'Histórico'))]), 'Você ainda não tem orientandos.')), detalhe];
+};
+
+TELAS.desistencias = async () => {
+  const lista = await api('GET', '/orientacao/desistencias/pendentes') || [];
+  const decidir = async (p, confirmar) => {
+    if (confirmar && !confirm('Confirmar a desistência vai cancelar o TCC. Continuar?')) return;
+    if (await api('PATCH', `/orientacao/desistencias/${p.id}`, { confirmar })) { aviso(confirmar ? 'Desistência confirmada. O TCC foi cancelado.' : 'Desistência não confirmada. O TCC continua.'); recarregar(); }
+  };
+  return h('div', { class: 'cartao' }, h('h2', {}, 'Pedidos de desistência (UC12)'),
+    h('p', { class: 'dica' }, 'Confirmar cancela o TCC com o motivo informado pelo aluno (RD11) e libera a vaga do orientador.'),
+    tabela(['Aluno(a)', 'TCC', 'Motivo', 'Data', ''], lista.map((p) => [p.aluno, h('b', {}, p.titulo), p.motivo, dataBR(p.criado_em),
+      h('div', { class: 'acoes' }, h('button', { class: 'peq vermelho', onclick: () => decidir(p, true) }, 'Confirmar'),
+        h('button', { class: 'peq sec', onclick: () => decidir(p, false) }, 'Não confirmar'))]), 'Nenhum pedido aguardando.'));
+};
+
+TELAS.areas = async () => {
+  const [areas, orientadores] = await Promise.all([api('GET', '/areas'), api('GET', '/orientacao/orientadores')]);
+  const minhas = (orientadores || []).find((o) => Number(o.id) === Number(estado.usuario.id))?.areas || [];
+  const caixas = (areas || []).map((a) => { const c = h('input', { type: 'checkbox', value: a.id, checked: minhas.includes(a.nome) }); c.style.width = 'auto'; return h('label', { style: 'font-weight:normal;display:flex;gap:8px;align-items:center' }, c, a.nome); });
+  return h('div', { class: 'cartao' }, h('h2', {}, 'Minhas áreas de interesse (UC05)'),
+    h('p', { class: 'dica' }, 'Os alunos encontram você pelas áreas marcadas aqui. É preciso marcar ao menos uma.'),
+    caixas,
+    h('div', { class: 'acoes' }, h('button', { onclick: async () => {
+      const areaIds = caixas.map((l) => l.querySelector('input')).filter((c) => c.checked).map((c) => Number(c.value));
+      if (await api('PUT', '/usuarios/me/areas', { areaIds })) aviso('Áreas de interesse salvas.');
+    } }, 'Salvar áreas')));
+};
+
+// ---------------------------------------------------------------------------
+// COORDENAÇÃO
+// ---------------------------------------------------------------------------
+TELAS.usuarios = async () => {
+  const [usuarios, cursos] = await Promise.all([api('GET', '/usuarios'), api('GET', '/cursos')]);
+  const siglaCurso = (id) => (cursos || []).find((c) => Number(c.id) === Number(id))?.sigla || '-';
+  const nome = h('input'), email = h('input', { type: 'email' }), matricula = h('input'), titulacao = h('input', { placeholder: 'Ex.: Mestre, Doutor' }), instituicao = h('input');
+  const perfil = h('select', {}, Object.entries(PERFIS).map(([v, t]) => h('option', { value: v, selected: v === 'ALUNO' }, t)));
+  const curso = h('select', {}, h('option', { value: '' }, 'Sem curso'), (cursos || []).filter((c) => c.ativo).map((c) => h('option', { value: c.id, selected: Number(c.id) === Number(estado.usuario?.cursoId) }, `${c.nome} (${c.sigla})`)));
+  const externo = h('input', { type: 'checkbox' }); externo.style.width = 'auto';
+  const cadastrar = async () => {
+    const corpo = { nome: nome.value, email: email.value, perfil: perfil.value, cursoId: curso.value ? Number(curso.value) : null,
+      matricula: matricula.value || null, externo: externo.checked, instituicao: instituicao.value || null, titulacao: titulacao.value || null };
+    if (await api('POST', '/usuarios', corpo)) { aviso('Usuário cadastrado. O link para ele criar a própria senha apareceu no terminal da API.'); recarregar(); }
+  };
+  const desativar = async (u) => { if (confirm(`Desativar ${u.nome}?`) && await api('PATCH', `/usuarios/${u.id}/desativar`)) { aviso('Usuário desativado.'); recarregar(); } };
+  return [
+    h('div', { class: 'cartao' }, h('h2', {}, 'Cadastrar usuário (UC03)'),
+      h('p', { class: 'dica' }, 'A coordenação não define senha: o sistema envia ao novo usuário um link para ele criar a dele (nesta versão o e-mail aparece no terminal da API).'),
+      h('div', { class: 'linha' }, campo('Nome completo', nome), campo('E-mail', email), campo('Perfil', perfil), campo('Curso', curso),
+        campo('Matrícula (alunos)', matricula), campo('Titulação (professores)', titulacao), campo('Instituição (membro externo)', instituicao)),
+      h('label', { style: 'font-weight:normal;display:flex;gap:8px;align-items:center' }, externo, 'Membro externo à UEA'),
+      h('div', { class: 'acoes' }, h('button', { onclick: cadastrar }, 'Cadastrar'))),
+    h('div', { class: 'cartao' }, h('h2', {}, 'Usuários cadastrados'),
+      tabela(['Nome', 'E-mail', 'Perfil', 'Curso', 'Situação', ''], (usuarios || []).map((u) => [u.nome, u.email, PERFIS[u.perfil] || u.perfil, siglaCurso(u.curso_id),
+        u.ativo ? h('span', { class: 'selo verde' }, 'Ativo') : h('span', { class: 'selo vermelho' }, 'Desativado'),
+        u.ativo && Number(u.id) !== Number(estado.usuario.id) ? h('button', { class: 'peq sec', onclick: () => desativar(u) }, 'Desativar') : '']))),
+  ];
+};
+
+TELAS.cursos = async () => {
+  const [cursos, areas] = await Promise.all([api('GET', '/cursos'), api('GET', '/areas')]);
+  const nomeCurso = h('input'), sigla = h('input', { maxlength: 10 }), limite = h('input', { type: 'number', min: 1, value: 5 });
+  const nomeArea = h('input');
+  const acaoCurso = async (c, tipo) => {
+    if (tipo === 'excluir' && !confirm(`Excluir o curso ${c.sigla}?`)) return;
+    const r = tipo === 'excluir' ? await api('DELETE', `/cursos/${c.id}`) : await api('PATCH', `/cursos/${c.id}/desativar`);
+    if (r) { aviso(tipo === 'excluir' ? 'Curso excluído.' : 'Curso desativado.'); recarregar(); }
+  };
+  return [
+    h('div', { class: 'cartao' }, h('h2', {}, 'Cursos (UC04)'),
+      h('p', { class: 'dica' }, 'Um curso com usuários ou TCCs não pode ser excluído, só desativado.'),
+      tabela(['Curso', 'Sigla', 'Limite de orientandos', 'Situação', ''], (cursos || []).map((c) => [c.nome, c.sigla, c.limite_orientandos,
+        c.ativo ? h('span', { class: 'selo verde' }, 'Ativo') : h('span', { class: 'selo vermelho' }, 'Desativado'),
+        h('div', { class: 'acoes' }, c.ativo ? h('button', { class: 'peq sec', onclick: () => acaoCurso(c, 'desativar') }, 'Desativar') : null,
+          h('button', { class: 'peq vermelho', onclick: () => acaoCurso(c, 'excluir') }, 'Excluir'))])),
+      h('h3', {}, 'Novo curso'),
+      h('div', { class: 'linha' }, campo('Nome', nomeCurso), campo('Sigla', sigla), campo('Limite de orientandos por professor', limite)),
+      h('div', { class: 'acoes' }, h('button', { onclick: async () => {
+        if (await api('POST', '/cursos', { nome: nomeCurso.value, sigla: sigla.value, limiteOrientandos: Number(limite.value) })) { aviso('Curso cadastrado.'); recarregar(); }
+      } }, 'Cadastrar curso'))),
+    h('div', { class: 'cartao' }, h('h2', {}, 'Áreas do conhecimento (UC04)'),
+      h('p', {}, (areas || []).map((a) => h('span', { class: 'selo', style: 'margin:0 6px 6px 0' }, a.nome))),
+      h('div', { class: 'linha' }, campo('Nova área', nomeArea)),
+      h('div', { class: 'acoes' }, h('button', { onclick: async () => {
+        if (await api('POST', '/areas', { nome: nomeArea.value })) { aviso('Área cadastrada.'); recarregar(); }
+      } }, 'Cadastrar área'))),
+  ];
+};
+
+TELAS.trocas = async () => {
+  const lista = await api('GET', '/orientacao/trocas/pendentes') || [];
+  const decidir = async (t, aprovar) => {
+    const corpo = { aprovar };
+    if (!aprovar) { const j = prompt('Justificativa da recusa (obrigatória):'); if (j === null) return; corpo.justificativa = j; }
+    if (await api('PATCH', `/orientacao/trocas/${t.id}`, corpo)) { aviso(aprovar ? 'Troca aprovada. O orientador anterior fica no histórico (RD14).' : 'Troca recusada.'); recarregar(); }
+  };
+  return h('div', { class: 'cartao' }, h('h2', {}, 'Pedidos de troca de orientador (UC11)'),
+    h('p', { class: 'dica' }, 'Aparecem só os pedidos dos alunos do seu curso. Ao aprovar, o limite de orientandos do novo orientador é conferido (RD05).'),
+    tabela(['Aluno(a)', 'TCC', 'De → Para', 'Motivo', ''], lista.map((t) => [t.aluno, h('b', {}, t.titulo), `${t.orientador_atual} → ${t.novo_orientador}`, t.motivo,
+      h('div', { class: 'acoes' }, h('button', { class: 'peq verde', onclick: () => decidir(t, true) }, 'Aprovar'),
+        h('button', { class: 'peq vermelho', onclick: () => decidir(t, false) }, 'Recusar'))]), 'Nenhum pedido aguardando.'));
+};
+
+// ---------------------------------------------------------------------------
+// TP3 – Situação do TCC (UC17), calendário (UC13) e bancas (UC19, UC20, UC21)
+// ---------------------------------------------------------------------------
+const TRANSICOES = {
+  EM_PROPOSTA: ['CANCELADO'],
+  EM_DESENVOLVIMENTO: ['APTO_DEFESA', 'NAO_APRESENTADO', 'CANCELADO'],
+  APTO_DEFESA: ['EM_DESENVOLVIMENTO', 'NAO_APRESENTADO', 'CANCELADO'],
+};
+const PAPEIS = { PRESIDENTE: 'Presidente', TITULAR: 'Titular', SUPLENTE: 'Suplente' };
+const RESULTADOS = { APROVADO: ['Aprovado', 'verde'], APROVADO_COM_CORRECOES: ['Aprovado com correções', 'verde'], REPROVADO: ['Reprovado', 'vermelho'] };
+const STATUS_BANCA = { AGENDADA: ['Agendada', ''], REALIZADA: ['Realizada', 'verde'], CANCELADA: ['Cancelada', 'vermelho'] };
+const ETAPAS = [['PROPOSTA', 'Proposta'], ['QUALIFICACAO', 'Qualificação'], ['VERSAO_FINAL', 'Versão final'], ['DEFESA', 'Defesa'], ['ENTREGA_DEFINITIVA', 'Entrega definitiva']];
+const selo = (mapa, v) => { const [t, c] = mapa[v] || [v, '']; return h('span', { class: 'selo ' + c }, t); };
+const diaBR = (d) => d ? d.split('-').reverse().join('/') : '-';
+const nota = (n) => n === null || n === undefined ? '-' : Number(n).toFixed(2).replace('.', ',');
+const semestreAtual = () => { const d = new Date(); return `${d.getFullYear()}.${d.getMonth() < 6 ? 1 : 2}`; };
+
+/** UC17 – formulário para alterar a situação do TCC. */
+function cartaoSituacao(t, aoSalvar) {
+  const opcoes = TRANSICOES[t.situacao] || [];
+  if (!opcoes.length) return h('div', { class: 'cartao' }, h('h2', {}, 'Alterar situação (UC17)'), h('div', { class: 'vazio' }, 'Esta situação é final e não pode mais ser alterada.'));
+  const nova = h('select', {}, opcoes.map((s) => h('option', { value: s }, SITUACOES[s][0])));
+  const justificativa = h('textarea', { placeholder: 'Obrigatória, exceto para "Apto à defesa" (RD11)' });
+  return h('div', { class: 'cartao' }, h('h2', {}, 'Alterar situação do TCC (UC17)'), h('p', { class: 'dica' }, `${t.titulo} – ${t.aluno}. Situação atual: ${SITUACOES[t.situacao][0]}.`),
+    h('p', { class: 'dica' }, 'Aprovado e Reprovado só pelo resultado da defesa. Se o TCC sair de "Apto à defesa", a banca agendada é cancelada e os membros são avisados.'),
+    campo('Nova situação', nova), campo('Justificativa', justificativa),
+    h('div', { class: 'acoes' }, h('button', { onclick: async () => {
+      if (['CANCELADO', 'NAO_APRESENTADO'].includes(nova.value) && !confirm(`Marcar como "${SITUACOES[nova.value][0]}" encerra o TCC. Continuar?`)) return;
+      if (await api('PATCH', `/tccs/${t.id}/situacao`, { situacao: nova.value, justificativa: justificativa.value || null })) aoSalvar();
+    } }, 'Salvar situação')));
+}
+
+/** Período da etapa Defesa no calendário do curso (para orientar quem marca a banca). */
+async function periodoDefesa() {
+  const cals = await api('GET', '/calendarios', undefined, { silencioso: true }) || [];
+  const atual = cals.find((c) => c.semestre === semestreAtual()) || cals[0];
+  const d = atual?.etapas.find((e) => e.etapa === 'DEFESA');
+  return d ? `Período de defesas de ${atual.semestre}: ${diaBR(d.dataInicio)} a ${diaBR(d.dataLimite)} (RD09).` : 'A coordenação ainda não cadastrou o calendário deste semestre: sem ele a banca não pode ser marcada (RD09).';
+}
+
+/** UC19 – cadastrar a banca de um orientando apto à defesa. */
+async function cartaoNovaBanca(t) {
+  const [disponiveis, periodo] = await Promise.all([api('GET', '/bancas/membros-disponiveis'), periodoDefesa()]);
+  const quando = h('input', { type: 'datetime-local' });
+  const local = h('input', { placeholder: 'Ex.: Auditório da EST ou link do Meet' });
+  const linhas = (disponiveis || []).filter((m) => Number(m.id) !== Number(estado.usuario.id)).map((m) => {
+    const papel = h('select', { 'data-id': m.id }, h('option', { value: '' }, 'Não participa'), h('option', { value: 'TITULAR' }, 'Titular'), h('option', { value: 'SUPLENTE' }, 'Suplente'));
+    return { papel, el: h('div', { class: 'membro-linha' }, h('span', {}, m.nome, ' ', m.externo ? h('span', { class: 'selo amarelo' }, 'Externo – ' + (m.instituicao || '')) : null), papel) };
+  });
+  return h('div', { class: 'cartao' }, h('h2', {}, 'Cadastrar banca de defesa (UC19)'), h('p', { class: 'dica' }, `${t.titulo} – ${t.aluno}`),
+    h('p', { class: 'dica' }, periodo + ' Você é o presidente. Escolha pelo menos 2 titulares e 1 suplente (RD08).'),
+    h('div', { class: 'linha' }, campo('Data e hora', quando), campo('Local ou link', local)),
+    h('h3', {}, 'Membros da banca'), linhas.map((l) => l.el),
+    h('div', { class: 'acoes' }, h('button', { class: 'verde', onclick: async () => {
+      if (!quando.value) return aviso('Informe a data e a hora.', 'erro');
+      const membros = linhas.filter((l) => l.papel.value).map((l) => ({ usuarioId: Number(l.papel.dataset.id), papel: l.papel.value }));
+      const r = await api('POST', '/bancas', { tccId: t.id, dataHora: new Date(quando.value).toISOString(), localOuLink: local.value, membros });
+      if (r) { aviso('Banca cadastrada. Membros, aluno e coorientador foram avisados.'); estado.aba = 'bancas'; sessao.set(estado); render(); }
+    } }, 'Cadastrar banca')));
+}
+
+/** Lista de membros de uma banca. */
+const listaMembros = (b) => tabela(['Membro', 'Papel', 'Nota'], (b.membros || []).map((m) => [
+  h('span', {}, m.nome, m.externo ? h('span', { class: 'dica' }, ` (${m.instituicao || 'externo'})`) : null), PAPEIS[m.papel],
+  m.papel === 'SUPLENTE' ? '—' : (m.notaRegistrada ? h('span', { class: 'selo verde' }, 'Lançada') : h('span', { class: 'selo amarelo' }, 'Pendente'))]));
+
+/** UC20 A1 – ata da defesa, pronta para imprimir ou salvar em PDF. */
+async function mostrarAta(bancaId, destino) {
+  const a = await api('GET', `/bancas/${bancaId}/ata`);
+  if (!a) return;
+  const avaliadores = a.membros.filter((m) => m.papel !== 'SUPLENTE');
+  destino.replaceChildren(h('div', { class: 'cartao ata' },
+    h('h2', {}, 'Universidade do Estado do Amazonas – Escola Superior de Tecnologia'),
+    h('h2', {}, `ATA DE DEFESA DE TRABALHO DE CONCLUSÃO DE CURSO – ${a.curso_nome}`),
+    h('p', {}, `Em ${dataBR(a.data_hora)}, em ${a.local_ou_link}, reuniu-se a banca examinadora para avaliar o Trabalho de Conclusão de Curso intitulado `,
+      h('b', {}, `"${a.titulo}${a.subtitulo ? ': ' + a.subtitulo : ''}"`), `, de autoria de `, h('b', {}, a.aluno), '.'),
+    tabela(['Membro', 'Papel', 'Nota', 'Parecer'], a.notas.map((n) => [n.nome, PAPEIS[n.papel], nota(n.nota), n.parecer || '-'])),
+    h('p', {}, 'Resultado: ', h('b', {}, RESULTADOS[a.resultado][0]), ` · Nota final (média): `, h('b', {}, nota(a.nota_final))),
+    a.observacao ? h('p', {}, h('b', {}, a.resultado === 'REPROVADO' ? 'Justificativa: ' : 'Correções exigidas: '), a.observacao) : null,
+    h('div', { class: 'assinaturas' }, avaliadores.map((m) => h('div', {}, m.nome, h('br'), PAPEIS[m.papel])), h('div', {}, a.aluno, h('br'), 'Discente')),
+    h('div', { class: 'acoes' }, h('button', { onclick: () => window.print() }, 'Imprimir / salvar em PDF'))));
+  destino.scrollIntoView({ behavior: 'smooth' });
+}
+
+/** UC21 A1 – convidar a audiência por e-mail. */
+function cartaoConvites(b, destino) {
+  const emails = h('textarea', { placeholder: 'Um e-mail por linha (até 20)' });
+  destino.replaceChildren(h('div', { class: 'cartao' }, h('h2', {}, 'Convidar a audiência (UC21)'), h('p', { class: 'dica' }, 'Os convidados recebem a data, o horário e o local por e-mail (nesta versão o e-mail aparece no terminal da API).'),
+    campo('E-mails', emails), h('div', { class: 'acoes' }, h('button', { onclick: async () => {
+      const lista = emails.value.split(/[\s,;]+/).filter(Boolean);
+      const r = await api('POST', `/bancas/${b.id}/convites`, { emails: lista });
+      if (r) { aviso(`${r.enviados} convite(s) enviado(s).`); destino.replaceChildren(); }
+    } }, 'Enviar convites'))));
+}
+
+/** Cartão de uma banca com as ações permitidas ao usuário logado. */
+function cartaoBanca(b, detalhe) {
+  const eu = Number(estado.usuario.id);
+  const papel = b.meuPapel;
+  const jaAconteceu = new Date(b.data_hora) <= new Date();
+  const minhaNotaLancada = b.membros?.find((m) => m.usuarioId === eu)?.notaRegistrada;
+  const acoes = [];
+  if (b.status === 'AGENDADA' && ['PRESIDENTE', 'TITULAR'].includes(papel) && jaAconteceu && !minhaNotaLancada) {
+    acoes.push(h('button', { class: 'peq verde', onclick: () => {
+      const n = h('input', { type: 'number', min: 0, max: 10, step: 0.1, placeholder: '0 a 10' });
+      const parecer = h('textarea', { placeholder: 'Parecer (opcional)' });
+      detalhe.replaceChildren(h('div', { class: 'cartao' }, h('h2', {}, 'Lançar minha nota (UC20)'), h('p', { class: 'dica' }, b.titulo),
+        h('div', { class: 'linha' }, campo('Nota', n)), campo('Parecer', parecer),
+        h('div', { class: 'acoes' }, h('button', { onclick: async () => {
+          const r = await api('POST', `/bancas/${b.id}/notas`, { nota: n.value === '' ? null : Number(n.value), parecer: parecer.value || null });
+          if (r) { aviso(r.faltam ? `Nota lançada. Faltam ${r.faltam} nota(s).` : 'Nota lançada. Todas as notas estão completas.'); recarregar(); }
+        } }, 'Lançar nota'))));
+    } }, 'Lançar nota'));
+  }
+  if (b.status === 'AGENDADA' && papel === 'PRESIDENTE') {
+    if (jaAconteceu) acoes.push(h('button', { class: 'peq', onclick: () => {
+      const res = h('select', {}, Object.entries(RESULTADOS).map(([v, [t]]) => h('option', { value: v }, t)));
+      const obs = h('textarea', { placeholder: 'Obrigatória se houver correções ou reprovação (RD11)' });
+      const ata = h('input', { placeholder: 'Link da ata assinada (opcional)' });
+      detalhe.replaceChildren(h('div', { class: 'cartao' }, h('h2', {}, 'Registrar resultado da defesa (UC20)'), h('p', { class: 'dica' }, 'A nota final é a média das notas dos titulares e do presidente. Todas precisam estar lançadas.'),
+        campo('Resultado', res), campo('Observação / correções / justificativa', obs), campo('Ata assinada', ata),
+        h('div', { class: 'acoes' }, h('button', { class: 'verde', onclick: async () => {
+          if (!confirm('Depois de registrado, o resultado não pode ser alterado. Confirmar?')) return;
+          const r = await api('POST', `/bancas/${b.id}/resultado`, { resultado: res.value, observacao: obs.value || null, ataUrl: ata.value || null });
+          if (r) { aviso(`Resultado registrado: ${RESULTADOS[r.resultado][0]}, nota final ${nota(r.nota_final)}.`); recarregar(); }
+        } }, 'Registrar resultado'))));
+    } }, 'Registrar resultado'));
+    if (!jaAconteceu) acoes.push(h('button', { class: 'peq sec', onclick: () => {
+      const quando = h('input', { type: 'datetime-local' });
+      const local = h('input', { value: b.local_ou_link });
+      detalhe.replaceChildren(h('div', { class: 'cartao' }, h('h2', {}, 'Remarcar banca (UC19)'), h('p', { class: 'dica' }, b.titulo),
+        h('div', { class: 'linha' }, campo('Nova data e hora', quando), campo('Local ou link', local)),
+        h('div', { class: 'acoes' }, h('button', { onclick: async () => {
+          if (!quando.value) return aviso('Informe a nova data.', 'erro');
+          if (await api('PATCH', `/bancas/${b.id}/remarcar`, { dataHora: new Date(quando.value).toISOString(), localOuLink: local.value })) { aviso('Banca remarcada. Todos foram avisados.'); recarregar(); }
+        } }, 'Remarcar'))));
+    } }, 'Remarcar'));
+  }
+  if (b.status === 'AGENDADA' && !jaAconteceu && (papel === 'PRESIDENTE' || Number(b.aluno_id) === eu)) {
+    acoes.push(h('button', { class: 'peq sec', onclick: () => cartaoConvites(b, detalhe) }, 'Convidar audiência'));
+  }
+  if (b.status === 'REALIZADA') acoes.push(h('button', { class: 'peq', onclick: () => mostrarAta(b.id, detalhe) }, 'Ver ata'));
+  return h('div', { class: 'cartao banca ' + b.status },
+    h('h2', {}, b.titulo), h('p', { class: 'dica' }, `${b.aluno} · ${b.curso}`),
+    h('p', {}, selo(STATUS_BANCA, b.status), ' ', papel ? h('span', { class: 'selo' }, 'Meu papel: ' + PAPEIS[papel]) : null, ' ',
+      b.resultado ? selo(RESULTADOS, b.resultado) : null, b.resultado ? ` Nota final: ${nota(b.nota_final)}` : null),
+    h('p', {}, h('b', {}, 'Quando: '), dataBR(b.data_hora), '  ·  ', h('b', {}, 'Onde: '), b.local_ou_link),
+    b.observacao ? h('p', { class: 'dica' }, b.observacao) : null,
+    b.status === 'AGENDADA' && !jaAconteceu && ['PRESIDENTE', 'TITULAR'].includes(papel) ? h('p', { class: 'dica' }, 'As notas podem ser lançadas depois do horário da defesa.') : null,
+    listaMembros(b), acoes.length ? h('div', { class: 'acoes' }, acoes) : null);
+}
+
+TELAS.bancas = async () => {
+  const lista = await api('GET', '/bancas/minhas') || [];
+  const detalhe = h('div');
+  return [h('div', { class: 'cartao' }, h('h2', {}, 'Minhas bancas (UC19 e UC20)'),
+    h('p', { class: 'dica' }, 'Bancas em que você é presidente, titular ou suplente. Depois da defesa, presidente e titulares lançam as notas; o presidente registra o resultado e a ata.'),
+    lista.length ? null : h('div', { class: 'vazio' }, 'Você não participa de nenhuma banca. Para criar uma, vá em "Meus orientandos" (o TCC precisa estar "Apto à defesa").')),
+  detalhe, lista.map((b) => cartaoBanca(b, detalhe))];
+};
+
+TELAS.defesa = async () => {
+  const lista = await api('GET', '/bancas/minhas') || [];
+  const detalhe = h('div');
+  if (!lista.length) return h('div', { class: 'cartao' }, h('h2', {}, 'Minha defesa'),
+    h('div', { class: 'vazio' }, 'Sua defesa ainda não foi agendada. O orientador cadastra a banca quando o TCC estiver "Apto à defesa".'));
+  return [detalhe, lista.map((b) => cartaoBanca(b, detalhe))];
+};
+
+/** UC21 – agenda pública de defesas (funciona com ou sem login). */
+async function cartaoAgenda(publica = false) {
+  const cursos = await api('GET', '/agenda/cursos', undefined, { silencioso: true }) || [];
+  const curso = h('select', {}, h('option', { value: '' }, 'Todos os cursos'), cursos.map((c) => h('option', { value: c.id }, `${c.nome} (${c.sigla})`)));
+  const mes = h('input', { type: 'month' });
+  const resultado = h('div');
+  const buscar = async () => {
+    const q = new URLSearchParams();
+    if (curso.value) q.set('cursoId', curso.value);
+    if (mes.value) q.set('mes', mes.value);
+    const lista = await api('GET', '/agenda' + (q.size ? '?' + q : '')) || [];
+    resultado.replaceChildren(tabela(['Data', 'TCC', 'Aluno(a)', 'Curso', 'Local', 'Banca'], lista.map((b) => [
+      dataBR(b.data_hora), h('b', {}, b.titulo), b.aluno, b.curso, b.local_ou_link,
+      (b.membros || []).map((m) => h('div', {}, `${m.nome} (${PAPEIS[m.papel]}${m.instituicao ? ' – ' + m.instituicao : ''})`))]), 'Nenhuma defesa agendada para este filtro.'));
+  };
+  await buscar();
+  return h('div', { class: 'cartao' }, h('h2', {}, 'Agenda de defesas (UC21)'),
+    h('p', { class: 'dica' }, 'Consulta pública: qualquer pessoa pode ver as próximas defesas, sem login. Não mostra e-mails.'),
+    h('div', { class: 'linha' }, campo('Curso', curso), campo('Mês', mes)),
+    h('div', { class: 'acoes' }, h('button', { onclick: buscar }, 'Filtrar'), publica ? h('button', { class: 'sec', onclick: telaLogin }, 'Voltar ao login') : null),
+    h('h3', {}, 'Próximas defesas'), resultado);
+}
+TELAS.agenda = () => cartaoAgenda(false);
+
+// ---------------------------------------------------------------------------
+// COORDENAÇÃO – calendário (UC13) e TCCs do curso (UC17)
+// ---------------------------------------------------------------------------
+TELAS.calendario = async () => {
+  const cals = await api('GET', '/calendarios') || [];
+  const proximo = (sem) => sem.endsWith('.1') ? sem.replace('.1', '.2') : `${Number(sem.slice(0, 4)) + 1}.1`;
+  const semestre = h('input', { value: cals.some((c) => c.semestre === semestreAtual()) ? proximo(semestreAtual()) : semestreAtual(), placeholder: '2026.2' });
+  const campos = ETAPAS.map(([id, nome]) => ({ id, nome, inicio: h('input', { type: 'date' }), limite: h('input', { type: 'date' }) }));
+  let editando = null;
+  const titulo = h('h2', {}, 'Novo calendário (UC13)');
+  const botao = h('button', {}, 'Cadastrar calendário');
+  const carregar = (c) => {
+    editando = c.semestre; semestre.value = c.semestre; semestre.disabled = true;
+    for (const f of campos) { const e = c.etapas.find((x) => x.etapa === f.id); f.inicio.value = e?.dataInicio || ''; f.limite.value = e?.dataLimite || ''; }
+    titulo.textContent = `Alterar calendário ${c.semestre} (UC13)`; botao.textContent = 'Salvar alterações';
+    titulo.scrollIntoView({ behavior: 'smooth' });
+  };
+  botao.addEventListener('click', async () => {
+    const etapas = campos.map((f) => ({ etapa: f.id, dataInicio: f.inicio.value, dataLimite: f.limite.value }));
+    const r = editando ? await api('PUT', `/calendarios/${editando}`, { etapas }) : await api('POST', '/calendarios', { semestre: semestre.value, etapas });
+    if (r) { aviso(editando ? 'Calendário alterado. Alunos e orientadores foram avisados.' : 'Calendário cadastrado. Alunos e orientadores foram avisados.'); recarregar(); }
+  });
+  return [
+    h('div', { class: 'cartao' }, h('h2', {}, 'Calendários do curso'),
+      h('p', { class: 'dica' }, 'As datas-limite valem para todos os TCCs do curso. A data da banca precisa estar dentro da etapa Defesa (RD09). Etapas que já terminaram não podem ser alteradas (RN03).'),
+      cals.length ? cals.map((c) => h('div', {}, h('h3', {}, 'Semestre ' + c.semestre, ' ', h('button', { class: 'peq sec', onclick: () => carregar(c) }, 'Alterar')),
+        tabela(['Etapa', 'Início', 'Data-limite'], c.etapas.map((e) => [ETAPAS.find(([id]) => id === e.etapa)[1], diaBR(e.dataInicio), diaBR(e.dataLimite)]))))
+        : h('div', { class: 'vazio' }, 'Nenhum calendário cadastrado.')),
+    h('div', { class: 'cartao' }, titulo,
+      h('div', { class: 'linha' }, campo('Semestre', semestre)),
+      h('div', { class: 'rolagem' }, h('table', { class: 'etapas' }, h('thead', {}, h('tr', {}, h('th', {}, 'Etapa'), h('th', {}, 'Início'), h('th', {}, 'Data-limite'))),
+        h('tbody', {}, campos.map((f) => h('tr', {}, h('td', {}, f.nome), h('td', {}, f.inicio), h('td', {}, f.limite)))))),
+      h('div', { class: 'acoes' }, botao)),
+    h('div', { class: 'cartao' }, h('h2', {}, 'Alertas de prazo (RF14)'),
+      h('p', { class: 'dica' }, 'O sistema confere os prazos sozinho ao ligar e depois a cada hora: avisa aluno e orientador 7 dias e 1 dia antes da data-limite e marca como atrasado o TCC que não entregou a versão no prazo. O botão abaixo faz a conferência na hora.'),
+      h('div', { class: 'acoes' }, h('button', { class: 'sec', onclick: async () => {
+        const r = await api('POST', '/prazos/verificar');
+        if (r) aviso(`Prazos conferidos: ${r.alertas} alerta(s) enviado(s), ${r.novosAtrasos} novo(s) atraso(s), ${r.tccsAtrasados} TCC(s) atrasado(s) no total.`);
+      } }, 'Verificar prazos agora'))),
+  ];
+};
+
+TELAS.tccsCurso = async () => {
+  const lista = await api('GET', '/tccs') || [];
+  const detalhe = h('div');
+  return [h('div', { class: 'cartao' }, h('h2', {}, 'TCCs do curso'),
+    h('p', { class: 'dica' }, 'A coordenação e o orientador podem alterar a situação do TCC (RD10). Cancelar ou marcar como "Não apresentado" exige justificativa (RD11).'),
+    tabela(['Aluno(a)', 'TCC', 'Orientador', 'Situação', 'Banca', ''], lista.map((t) => [t.aluno, h('b', {}, t.titulo), t.orientador || '-', h('span', {}, seloSituacao(t.situacao), t.atrasado ? [' ', h('span', { class: 'selo vermelho' }, 'Atrasado')] : null),
+      t.banca ? h('span', {}, selo(STATUS_BANCA, t.banca.status), ' ', dataBR(t.banca.dataHora)) : '-',
+      h('div', { class: 'acoes' },
+        TRANSICOES[t.situacao] ? h('button', { class: 'peq sec', onclick: () => detalhe.replaceChildren(cartaoSituacao(t, () => { aviso('Situação alterada. Aluno e orientador foram avisados.'); recarregar(); })) }, 'Alterar situação') : null,
+        h('button', { class: 'peq sec', onclick: async () => detalhe.replaceChildren(await cartaoHistorico(t.id, t.titulo)) }, 'Histórico'))]), 'Nenhum TCC no curso.')),
+  detalhe];
+};
+
+
+// ---------------------------------------------------------------------------
+// TP3 – Acompanhamento: versões, pareceres, prazos e conclusão por publicação
+// ---------------------------------------------------------------------------
+const ETAPA_NOME = Object.fromEntries(ETAPAS);
+const SITUACAO_ETAPA = { ENTREGUE: ['Entregue', 'verde'], PENDENTE: ['Pendente', 'amarelo'], ATRASADA: ['Atrasada', 'vermelho'], NAO_SE_APLICA: ['—', ''] };
+const tamanho = (b) => b > 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB';
+
+/** Baixa o PDF de uma versão (precisa do token, por isso não é um link comum). */
+async function baixarVersao(v) {
+  const res = await fetch(`/api/versoes/${v.id}/arquivo`, { headers: { Authorization: 'Bearer ' + estado.token } });
+  if (!res.ok) return aviso('Não foi possível baixar o arquivo.', 'erro');
+  const url = URL.createObjectURL(await res.blob());
+  const a = h('a', { href: url, download: v.arquivo_nome }); document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+const lerArquivo = (arquivo) => new Promise((ok, erro) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = erro; r.readAsDataURL(arquivo); });
+
+/** Prazos do semestre com a situação de cada entrega. */
+async function cartaoPrazos(tcc) {
+  const p = await api('GET', `/tccs/${tcc.id}/prazos`, undefined, { silencioso: true });
+  if (!p || !p.etapas.length) return h('div', { class: 'cartao' }, h('h2', {}, 'Meus prazos'), h('div', { class: 'vazio' }, 'A coordenação ainda não cadastrou o calendário deste semestre.'));
+  return h('div', { class: 'cartao' }, h('h2', {}, `Meus prazos – ${p.semestre}`),
+    h('p', { class: 'dica' }, 'Você recebe aviso 7 dias e 1 dia antes de cada data-limite. Se o prazo passar sem entrega, o TCC fica marcado como atrasado.'),
+    tabela(['Etapa', 'Período', 'Entrega'], p.etapas.map((e) => [ETAPA_NOME[e.etapa], `${diaBR(e.dataInicio)} a ${diaBR(e.dataLimite)}`,
+      e.exigeEntrega ? h('span', {}, selo(SITUACAO_ETAPA, e.situacao), e.situacao === 'PENDENTE' && e.dias !== null ? ` faltam ${e.dias} dia(s)` : '') : h('span', { class: 'dica' }, 'Sem entrega de arquivo')])));
+}
+
+/** RF14 / RF22 – enviar uma versão em PDF. */
+function cartaoEnviarVersao(tcc, definitiva) {
+  const etapa = h('select', {}, (definitiva ? [['ENTREGA_DEFINITIVA', 'Entrega definitiva']] : [['QUALIFICACAO', 'Qualificação'], ['VERSAO_FINAL', 'Versão final']]).map(([v, t]) => h('option', { value: v }, t)));
+  const arquivo = h('input', { type: 'file', accept: 'application/pdf,.pdf' });
+  const comentario = h('textarea', { placeholder: definitiva ? 'Ex.: versão com as correções pedidas pela banca' : 'O que mudou nesta versão? (opcional)' });
+  const visibilidade = h('select', {}, h('option', { value: 'TEXTO_COMPLETO' }, 'Texto completo pode aparecer na consulta pública'), h('option', { value: 'SOMENTE_METADADOS' }, 'Mostrar só título, autor e resumo'));
+  return h('div', { class: 'cartao' }, h('h2', {}, definitiva ? 'Entrega definitiva (versão final corrigida)' : 'Enviar versão do TCC'),
+    h('p', { class: 'dica' }, definitiva ? 'Envie o texto final, já com as correções da banca. Você escolhe se o texto completo fica público.' : 'Envie o arquivo em PDF (até 10 MB). O orientador recebe aviso e dá o parecer. Pode enviar quantas versões precisar.'),
+    h('div', { class: 'linha' }, campo('Etapa', etapa), campo('Arquivo PDF', arquivo)),
+    definitiva ? campo('Visibilidade na consulta pública', visibilidade) : null,
+    campo('Comentário', comentario),
+    h('div', { class: 'acoes' }, h('button', { onclick: async (e) => {
+      const f = arquivo.files[0];
+      if (!f) return aviso('Escolha o arquivo PDF.', 'erro');
+      if (f.size > 10 * 1024 * 1024) return aviso('O arquivo deve ter no máximo 10 MB.', 'erro');
+      e.target.disabled = true;
+      const r = await api('POST', `/tccs/${tcc.id}/versoes`, { etapa: etapa.value, arquivoNome: f.name, arquivoBase64: await lerArquivo(f), comentario: comentario.value || null,
+        ...(definitiva ? { visibilidade: visibilidade.value } : {}) });
+      e.target.disabled = false;
+      if (r) { aviso(`Versão ${r.numero} enviada${r.fora_do_prazo ? ' (fora do prazo)' : ''}. O orientador foi avisado.`); recarregar(); }
+    } }, 'Enviar versão')));
+}
+
+const seloParecer = (v) => v.parecer_decisao ? h('span', { class: 'selo ' + (v.parecer_decisao === 'APROVADA' ? 'verde' : 'amarelo') }, v.parecer_decisao === 'APROVADA' ? 'Aprovada' : 'Ajustes')
+  : h('span', { class: 'selo' }, 'Aguardando parecer');
+
+async function cartaoVersoes(tcc) {
+  const lista = await api('GET', `/tccs/${tcc.id}/versoes`) || [];
+  return h('div', { class: 'cartao' }, h('h2', {}, 'Minhas versões e pareceres'),
+    tabela(['Versão', 'Etapa', 'Enviada em', 'Parecer do orientador', ''], lista.map((v) => [
+      h('span', {}, `Versão ${v.numero}`, v.fora_do_prazo ? [' ', h('span', { class: 'selo vermelho' }, 'Fora do prazo')] : null),
+      ETAPA_NOME[v.etapa], dataBR(v.enviado_em),
+      h('div', {}, seloParecer(v), v.parecer_texto ? h('div', { class: 'dica' }, v.parecer_texto) : null),
+      h('button', { class: 'peq sec', onclick: () => baixarVersao(v) }, 'Baixar')]), 'Nenhuma versão enviada ainda.'));
+}
+
+/** RF21 – pedir conclusão por artigo publicado. */
+function cartaoPublicacao(tcc) {
+  const titulo = h('input'), veiculo = h('input', { placeholder: 'Ex.: SBIE 2026, Revista Brasileira de Informática na Educação' });
+  const ano = h('input', { type: 'number', value: new Date().getFullYear() }), link = h('input', { placeholder: 'https://doi.org/...' });
+  return h('div', { class: 'cartao' }, h('h2', {}, 'Conclusão por publicação'),
+    h('p', { class: 'dica' }, 'Se você publicou um artigo com o tema do TCC, pode pedir que ele conclua o TCC. A coordenação analisa e, se aprovar, o TCC fica "Aprovado para publicação" sem banca.'),
+    h('div', { class: 'linha' }, campo('Título do artigo', titulo), campo('Revista ou evento', veiculo), campo('Ano', ano), campo('Link ou DOI', link)),
+    h('div', { class: 'acoes' }, h('button', { class: 'sec', onclick: async () => {
+      if (await api('POST', `/tccs/${tcc.id}/publicacao`, { tituloArtigo: titulo.value, veiculo: veiculo.value, ano: Number(ano.value), link: link.value })) { aviso('Pedido enviado à coordenação.'); recarregar(); }
+    } }, 'Pedir conclusão por publicação')));
+}
+
+/** RF15 – orientador dá parecer nas versões recebidas. */
+TELAS.versoes = async () => {
+  const lista = await api('GET', '/versoes/recebidas') || [];
+  const detalhe = h('div');
+  const parecer = (v) => {
+    const decisao = h('select', {}, h('option', { value: 'APROVADA' }, 'Aprovada'), h('option', { value: 'AJUSTES' }, 'Precisa de ajustes'));
+    const texto = h('textarea', { placeholder: 'Comentários para o aluno (obrigatório se precisar de ajustes)' });
+    detalhe.replaceChildren(h('div', { class: 'cartao' }, h('h2', {}, `Parecer – versão ${v.numero} (${ETAPA_NOME[v.etapa]})`), h('p', { class: 'dica' }, `${v.titulo} – ${v.aluno}`),
+      campo('Parecer', decisao), campo('Comentários', texto),
+      h('div', { class: 'acoes' }, h('button', { onclick: async () => {
+        if (await api('POST', `/versoes/${v.id}/parecer`, { decisao: decisao.value, texto: texto.value || null })) { aviso('Parecer registrado. O aluno foi avisado.'); recarregar(); }
+      } }, 'Registrar parecer'))));
+    detalhe.scrollIntoView({ behavior: 'smooth' });
+  };
+  return [h('div', { class: 'cartao' }, h('h2', {}, 'Versões para parecer'),
+    h('p', { class: 'dica' }, 'Versões enviadas pelos seus orientandos. As que ainda não têm parecer aparecem primeiro.'),
+    tabela(['Aluno(a)', 'TCC', 'Versão', 'Enviada em', 'Parecer', ''], lista.map((v) => [v.aluno, h('b', {}, v.titulo),
+      h('span', {}, `${v.numero} – ${ETAPA_NOME[v.etapa]}`, v.fora_do_prazo ? [' ', h('span', { class: 'selo vermelho' }, 'Fora do prazo')] : null),
+      dataBR(v.enviado_em), h('div', {}, seloParecer(v), v.parecer_texto ? h('div', { class: 'dica' }, v.parecer_texto) : null),
+      h('div', { class: 'acoes' }, h('button', { class: 'peq sec', onclick: () => baixarVersao(v) }, 'Baixar'),
+        v.parecer_decisao ? null : h('button', { class: 'peq', onclick: () => parecer(v) }, 'Dar parecer'))]), 'Nenhuma versão recebida.')),
+  detalhe];
+};
+
+/** RF21 – coordenação decide os pedidos de conclusão por publicação. */
+TELAS.publicacoes = async () => {
+  const lista = await api('GET', '/publicacoes/pendentes') || [];
+  const decidir = async (p, aprovar) => {
+    const corpo = { aprovar };
+    if (!aprovar) { const j = prompt('Justificativa da recusa (obrigatória):'); if (j === null) return; corpo.justificativa = j; }
+    else if (!confirm('Aprovar conclui o TCC como "Aprovado para publicação" e cancela banca agendada, se houver. Continuar?')) return;
+    if (await api('PATCH', `/publicacoes/${p.id}`, corpo)) { aviso(aprovar ? 'TCC aprovado por publicação.' : 'Pedido recusado.'); recarregar(); }
+  };
+  return h('div', { class: 'cartao' }, h('h2', {}, 'Conclusão por publicação'),
+    h('p', { class: 'dica' }, 'Pedidos dos alunos do seu curso para concluir o TCC com um artigo publicado. Recusar exige justificativa (RD11).'),
+    tabela(['Aluno(a)', 'TCC', 'Artigo', 'Orientador', ''], lista.map((p) => [p.aluno, h('b', {}, p.titulo),
+      h('div', {}, h('b', {}, p.titulo_artigo), h('div', { class: 'dica' }, `${p.veiculo}, ${p.ano}`), h('a', { href: p.link, target: '_blank', rel: 'noopener' }, 'Abrir artigo')),
+      p.orientador || '-',
+      h('div', { class: 'acoes' }, h('button', { class: 'peq verde', onclick: () => decidir(p, true) }, 'Aprovar'),
+        h('button', { class: 'peq vermelho', onclick: () => decidir(p, false) }, 'Recusar'))]), 'Nenhum pedido aguardando.'));
+};
+
+// ---------------------------------------------------------------------------
+document.getElementById('btn-sair').addEventListener('click', sair);
+const salvo = sessao.get();
+if (salvo?.token) estado = salvo;
+render();
+</script>
+</body>
+</html>

@@ -35,6 +35,11 @@ export const orientacaoService = {
 
   solicitacoesRecebidas: (professorId: number) => repo.solicitacoesDoProfessor(pool, professorId),
 
+  /** Consultas de apoio à tela de testes: orientandos, trocas e desistências pendentes. */
+  meusOrientandos: (professorId: number) => repo.tccsDoOrientador(pool, professorId),
+  trocasPendentes: (coordenacao: UsuarioLogadoLike) => repo.trocasPendentes(pool, coordenacao.cursoId),
+  desistenciasPendentes: (usuario: UsuarioLogadoLike) => repo.desistenciasPendentes(pool, usuario),
+
   /** UC07 – Solicitar orientação (RF07, RD02, RD04, RD05). */
   async solicitar(alunoId: number, professorId: number) {
     return transacao(async (db) => {

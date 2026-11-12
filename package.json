@@ -9,7 +9,8 @@
     "start": "tsx src/server.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "db:reset": "tsx scripts/reset-banco.ts"
+    "db:reset": "tsx scripts/reset-banco.ts",
+    "db:exemplos": "tsx scripts/reset-banco.ts --exemplos"
   },
   "engines": {
     "node": ">=20"

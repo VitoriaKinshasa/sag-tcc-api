@@ -1,5 +1,5 @@
 -- =====================================================================
--- SAG-TCC – Modelo físico (PostgreSQL 16) – Núcleo do sistema (TP2)
+-- SAG-TCC – Modelo físico (PostgreSQL 16) – Núcleo (TP2) + Calendário e Bancas (TP3)
 -- =====================================================================
 
 -- ---------- Tipos enumerados ----------
@@ -13,6 +13,11 @@ CREATE TYPE papel_vinculo      AS ENUM ('ORIENTADOR', 'COORIENTADOR');
 CREATE TYPE tipo_reuniao       AS ENUM ('ALINHAMENTO', 'ENCONTRO');
 CREATE TYPE tipo_token         AS ENUM ('PRIMEIRO_ACESSO', 'REDEFINICAO_SENHA');
 CREATE TYPE operacao_auditoria AS ENUM ('INSERT', 'UPDATE', 'DELETE');
+CREATE TYPE etapa_calendario   AS ENUM ('PROPOSTA', 'QUALIFICACAO', 'VERSAO_FINAL', 'DEFESA', 'ENTREGA_DEFINITIVA');
+CREATE TYPE status_banca       AS ENUM ('AGENDADA', 'REALIZADA', 'CANCELADA');
+CREATE TYPE papel_banca        AS ENUM ('PRESIDENTE', 'TITULAR', 'SUPLENTE');
+CREATE TYPE resultado_banca    AS ENUM ('APROVADO', 'APROVADO_COM_CORRECOES', 'REPROVADO');
+CREATE TYPE decisao_parecer    AS ENUM ('APROVADA', 'AJUSTES');
 
 -- ---------- Cursos e áreas (RF32) ----------
 CREATE TABLE curso (
@@ -162,6 +167,117 @@ CREATE TABLE pedido_desistencia (                           -- RF35
     decidido_em          TIMESTAMPTZ
 );
 CREATE UNIQUE INDEX ux_desistencia_pendente ON pedido_desistencia (tcc_id) WHERE status = 'PENDENTE';
+
+-- ---------- Calendário de etapas (RF10 – UC13) ----------
+CREATE TABLE calendario_etapa (
+    id                   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    curso_id             BIGINT NOT NULL REFERENCES curso(id),
+    semestre             VARCHAR(6) NOT NULL CHECK (semestre ~ '^[0-9]{4}\.[12]$'),   -- ex.: 2026.2
+    etapa                etapa_calendario NOT NULL,
+    data_inicio          DATE NOT NULL,
+    data_limite          DATE NOT NULL,
+    criado_em            TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT ck_calendario_datas CHECK (data_inicio <= data_limite),
+    CONSTRAINT ux_calendario_etapa UNIQUE (curso_id, semestre, etapa)            -- um calendário por curso e semestre
+);
+
+-- ---------- Bancas e defesas (RF17–RF20, RF39 – UC19 a UC21) ----------
+CREATE TABLE banca (
+    id                   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    tcc_id               BIGINT NOT NULL REFERENCES tcc(id),
+    data_hora            TIMESTAMPTZ  NOT NULL,
+    local_ou_link        VARCHAR(250) NOT NULL,
+    status               status_banca NOT NULL DEFAULT 'AGENDADA',
+    criado_por           BIGINT NOT NULL REFERENCES usuario(id),
+    criado_em            TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+-- Um TCC tem no máximo uma banca agendada por vez
+CREATE UNIQUE INDEX ux_banca_agendada_por_tcc ON banca (tcc_id) WHERE status = 'AGENDADA';
+CREATE INDEX ix_banca_data ON banca (data_hora) WHERE status = 'AGENDADA';
+
+CREATE TABLE banca_membro (
+    banca_id             BIGINT NOT NULL REFERENCES banca(id),
+    usuario_id           BIGINT NOT NULL REFERENCES usuario(id),
+    papel                papel_banca NOT NULL,
+    PRIMARY KEY (banca_id, usuario_id)                                           -- RD08: sem membro repetido
+);
+CREATE UNIQUE INDEX ux_banca_presidente ON banca_membro (banca_id) WHERE papel = 'PRESIDENTE';
+
+CREATE TABLE nota_banca (
+    banca_id             BIGINT NOT NULL,
+    membro_id            BIGINT NOT NULL,
+    nota                 NUMERIC(4,2) NOT NULL CHECK (nota BETWEEN 0 AND 10),
+    parecer              TEXT,
+    registrado_em        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (banca_id, membro_id),                                           -- uma nota por membro
+    FOREIGN KEY (banca_id, membro_id) REFERENCES banca_membro (banca_id, usuario_id)
+);
+
+CREATE TABLE resultado_defesa (
+    banca_id             BIGINT PRIMARY KEY REFERENCES banca(id),
+    resultado            resultado_banca NOT NULL,
+    nota_final           NUMERIC(4,2) NOT NULL CHECK (nota_final BETWEEN 0 AND 10),
+    observacao           TEXT,
+    ata_url              VARCHAR(500),
+    registrado_por       BIGINT NOT NULL REFERENCES usuario(id),
+    registrado_em        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT ck_resultado_observacao CHECK (resultado = 'APROVADO' OR observacao IS NOT NULL)   -- RD11
+);
+
+-- ---------- Acompanhamento: versões, pareceres, prazos e publicação (TP3) ----------
+CREATE TABLE versao_tcc (                                   -- envio de versões e versão final
+    id                   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    tcc_id               BIGINT NOT NULL REFERENCES tcc(id),
+    etapa                etapa_calendario NOT NULL,
+    numero               SMALLINT     NOT NULL,                 -- 1, 2, 3... por TCC
+    comentario           TEXT,
+    arquivo_nome         VARCHAR(200) NOT NULL,
+    arquivo_tamanho      INTEGER      NOT NULL,
+    arquivo              BYTEA        NOT NULL,                 -- PDF de até 10 MB
+    fora_do_prazo        BOOLEAN      NOT NULL DEFAULT FALSE,
+    enviado_por          BIGINT       NOT NULL REFERENCES usuario(id),
+    enviado_em           TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    CONSTRAINT ux_versao_numero UNIQUE (tcc_id, numero),
+    CONSTRAINT ck_versao_etapa CHECK (etapa IN ('QUALIFICACAO', 'VERSAO_FINAL', 'ENTREGA_DEFINITIVA')),
+    CONSTRAINT ck_versao_tamanho CHECK (arquivo_tamanho > 0 AND arquivo_tamanho <= 10485760)
+);
+CREATE INDEX ix_versao_tcc ON versao_tcc (tcc_id, etapa);
+
+CREATE TABLE parecer_versao (                               -- parecer do orientador sobre cada versão
+    id                   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    versao_id            BIGINT NOT NULL REFERENCES versao_tcc(id),
+    autor_id             BIGINT NOT NULL REFERENCES usuario(id),
+    decisao              decisao_parecer NOT NULL,
+    texto                TEXT,
+    criado_em            TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT ux_parecer_versao UNIQUE (versao_id),
+    CONSTRAINT ck_parecer_ajustes CHECK (decisao = 'APROVADA' OR texto IS NOT NULL)
+);
+
+CREATE TABLE alerta_prazo (                                 -- evita enviar o mesmo alerta duas vezes
+    tcc_id               BIGINT NOT NULL REFERENCES tcc(id),
+    etapa                etapa_calendario NOT NULL,
+    semestre             VARCHAR(6)  NOT NULL,
+    tipo                 VARCHAR(10) NOT NULL CHECK (tipo IN ('7_DIAS', '1_DIA', 'ATRASO')),
+    enviado_em           TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (tcc_id, etapa, semestre, tipo)
+);
+
+CREATE TABLE pedido_publicacao (                            -- conclusão por publicação de artigo
+    id                   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    tcc_id               BIGINT NOT NULL REFERENCES tcc(id),
+    titulo_artigo        VARCHAR(250) NOT NULL,
+    veiculo              VARCHAR(250) NOT NULL,                 -- revista ou evento
+    ano                  SMALLINT     NOT NULL,
+    link                 VARCHAR(500) NOT NULL,                 -- DOI ou endereço do artigo
+    status               status_decisao NOT NULL DEFAULT 'PENDENTE',
+    justificativa        TEXT,
+    decidido_por         BIGINT REFERENCES usuario(id),
+    criado_em            TIMESTAMPTZ NOT NULL DEFAULT now(),
+    decidido_em          TIMESTAMPTZ,
+    CONSTRAINT ck_publicacao_recusa CHECK (status <> 'RECUSADA' OR justificativa IS NOT NULL)
+);
+CREATE UNIQUE INDEX ux_publicacao_pendente ON pedido_publicacao (tcc_id) WHERE status = 'PENDENTE';
 
 -- ---------- Histórico, notificações e auditoria ----------
 CREATE TABLE evento_tcc (                                   -- RF36 (linha do tempo)

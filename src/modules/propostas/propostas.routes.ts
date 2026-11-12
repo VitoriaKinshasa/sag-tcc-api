@@ -11,12 +11,21 @@ const propostaSchema = z.object({
   areaId: z.number({ required_error: 'Selecione a área do conhecimento' }).int().positive(),
 });
 
+const situacaoSchema = z.object({
+  situacao: z.enum(['EM_PROPOSTA', 'EM_DESENVOLVIMENTO', 'APTO_DEFESA', 'APROVADO', 'APROVADO_PUBLICACAO', 'NAO_APRESENTADO', 'REPROVADO', 'CANCELADO'],
+    { errorMap: () => ({ message: 'Situação inválida' }) }),
+  justificativa: z.string().nullish(),
+});
+
 export const propostasRoutes = Router();
 propostasRoutes.use(autenticar);
 
 propostasRoutes.post('/', exigirPerfil('ALUNO'), async (req, res) => {
   const u = usuarioDe(req);
   res.status(201).json(await propostasService.submeter(u.id, u.cursoId, propostaSchema.parse(req.body)));
+});
+propostasRoutes.get('/', exigirPerfil('COORDENACAO'), async (req, res) => {
+  res.json(await propostasService.doCurso(usuarioDe(req)));
 });
 propostasRoutes.get('/meu', exigirPerfil('ALUNO'), async (req, res) => {
   res.json(await propostasService.meuTcc(usuarioDe(req).id));
@@ -26,4 +35,9 @@ propostasRoutes.put('/:id', exigirPerfil('ALUNO'), async (req, res) => {
 });
 propostasRoutes.get('/:id/historico', async (req, res) => {
   res.json(await propostasService.historico(usuarioDe(req), Number(req.params.id)));
+});
+
+// UC17 – Alterar situação do TCC (orientador ou coordenação – RD10)
+propostasRoutes.patch('/:id/situacao', exigirPerfil('ORIENTADOR', 'COORDENACAO'), async (req, res) => {
+  res.json(await propostasService.alterarSituacao(usuarioDe(req), Number(req.params.id), situacaoSchema.parse(req.body)));
 });

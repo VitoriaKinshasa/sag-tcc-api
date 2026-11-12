@@ -193,6 +193,43 @@ describe('UC12 – Registrar desistência (RF35, RD11)', () => {
   });
 });
 
+describe('Consultas usadas pela tela de testes', () => {
+  it('orientador vê os próprios orientandos', async () => {
+    const prof = await novoUsuarioLogado('ORIENTADOR');
+    const aluno = await alunoOrientado(prof);
+    const res = await api().get('/api/orientacao/orientandos').set(prof.auth);
+    expect(res.status).toBe(200);
+    expect(res.body.map((t: { id: number }) => Number(t.id))).toContain(aluno.tccId);
+  });
+
+  it('coordenação vê as trocas pendentes do seu curso e o aluno não tem acesso (RNF05)', async () => {
+    const prof1 = await novoUsuarioLogado('ORIENTADOR');
+    const prof2 = await criarUsuario('ORIENTADOR');
+    const aluno = await alunoOrientado(prof1);
+    const troca = await api().post('/api/orientacao/trocas').set(aluno.auth).send({ novoOrientadorId: prof2.id, motivo: 'Mudança de tema' });
+    const coord = await novoUsuarioLogado('COORDENACAO');
+    const res = await api().get('/api/orientacao/trocas/pendentes').set(coord.auth);
+    expect(res.status).toBe(200);
+    expect(res.body.map((t: { id: number }) => Number(t.id))).toContain(Number(troca.body.id));
+    expect((await api().get('/api/orientacao/trocas/pendentes').set(aluno.auth)).status).toBe(403);
+  });
+
+  it('orientador vê o pedido de desistência do seu orientando', async () => {
+    const prof = await novoUsuarioLogado('ORIENTADOR');
+    const aluno = await alunoOrientado(prof);
+    const pedido = await api().post('/api/orientacao/desistencias').set(aluno.auth).send({ motivo: 'Transferência de curso' });
+    const res = await api().get('/api/orientacao/desistencias/pendentes').set(prof.auth);
+    expect(res.status).toBe(200);
+    expect(res.body.map((p: { id: number }) => Number(p.id))).toContain(Number(pedido.body.id));
+  });
+
+  it('a API entrega a tela de testes no endereço principal', async () => {
+    const res = await api().get('/');
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('SAG-TCC');
+  });
+});
+
 describe('RD13 – Log de auditoria imutável', () => {
   it('o banco impede alterar ou excluir registros de auditoria', async () => {
     await expect(pool.query('DELETE FROM auditoria')).rejects.toThrow(/RD13/);

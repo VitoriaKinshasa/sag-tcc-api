@@ -3,6 +3,10 @@ import { env } from '../config/env.js';
 
 // Os ids são BIGINT; por padrão o driver devolve BIGINT como texto. Aqui convertemos para número.
 pg.types.setTypeParser(pg.types.builtins.INT8, (valor) => Number.parseInt(valor, 10));
+// Datas sem hora (DATE) ficam como texto 'AAAA-MM-DD', para não mudarem de dia por causa do fuso horário.
+pg.types.setTypeParser(pg.types.builtins.DATE, (valor) => valor);
+// Notas (NUMERIC) viram número.
+pg.types.setTypeParser(pg.types.builtins.NUMERIC, (valor) => Number.parseFloat(valor));
 
 export const pool = new pg.Pool({ connectionString: env.DATABASE_URL });
 

@@ -20,6 +20,14 @@ export const tccRepository = {
     );
     return rows[0];
   },
+  /** Último TCC aprovado do aluno (para a entrega definitiva). */
+  async buscarAprovadoDoAluno(db: Db, alunoId: number): Promise<Tcc | undefined> {
+    const { rows } = await db.query(
+      "SELECT * FROM tcc WHERE aluno_id = $1 AND situacao IN ('APROVADO', 'APROVADO_PUBLICACAO') ORDER BY atualizado_em DESC LIMIT 1",
+      [alunoId],
+    );
+    return rows[0];
+  },
   async inserir(db: Db, t: { alunoId: number; cursoId: number; areaId: number; titulo: string; subtitulo: string | null; resumo: string }): Promise<Tcc> {
     const { rows } = await db.query(
       `INSERT INTO tcc (aluno_id, curso_id, area_id, titulo, subtitulo, resumo)

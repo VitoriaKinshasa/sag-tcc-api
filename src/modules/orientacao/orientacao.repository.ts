@@ -67,6 +67,19 @@ export const orientacaoRepository = {
     return rows;
   },
 
+  /** TCCs em andamento que o professor orienta ou coorienta (usados pela tela de testes). */
+  async tccsDoOrientador(db: Db, professorId: number) {
+    const { rows } = await db.query(
+      `SELECT t.id, t.titulo, t.situacao, t.atrasado, u.nome AS aluno, a.nome AS area,
+              CASE WHEN t.orientador_id = $1 THEN 'ORIENTADOR' ELSE 'COORIENTADOR' END AS papel
+       FROM tcc t JOIN usuario u ON u.id = t.aluno_id JOIN area_conhecimento a ON a.id = t.area_id
+       WHERE (t.orientador_id = $1 OR t.coorientador_id = $1) AND t.situacao = ANY($2)
+       ORDER BY u.nome`,
+      [professorId, SITUACOES_ATIVAS],
+    );
+    return rows;
+  },
+
   // ---------- Vínculos (histórico de orientadores – RD14) ----------
   async iniciarVinculo(db: Db, tccId: number, professorId: number, papel: 'ORIENTADOR' | 'COORIENTADOR') {
     await db.query('INSERT INTO vinculo_orientacao (tcc_id, professor_id, papel) VALUES ($1, $2, $3)', [tccId, professorId, papel]);
@@ -111,6 +124,21 @@ export const orientacaoRepository = {
     );
     return rows[0];
   },
+  /** UC11 – pedidos de troca aguardando a coordenação do curso. */
+  async trocasPendentes(db: Db, cursoId: number | null) {
+    const { rows } = await db.query(
+      `SELECT s.id, s.motivo, s.criado_em, t.id AS tcc_id, t.titulo, al.nome AS aluno,
+              oa.nome AS orientador_atual, nv.nome AS novo_orientador
+       FROM solicitacao_troca s JOIN tcc t ON t.id = s.tcc_id
+       JOIN usuario al ON al.id = t.aluno_id
+       JOIN usuario oa ON oa.id = s.orientador_atual_id
+       JOIN usuario nv ON nv.id = s.novo_orientador_id
+       WHERE s.status = 'PENDENTE' AND t.curso_id = $1
+       ORDER BY s.criado_em`,
+      [cursoId],
+    );
+    return rows;
+  },
   async buscarTroca(db: Db, id: number) {
     const { rows } = await db.query('SELECT * FROM solicitacao_troca WHERE id = $1 FOR UPDATE', [id]);
     return rows[0];
@@ -132,6 +160,18 @@ export const orientacaoRepository = {
   async inserirDesistencia(db: Db, tccId: number, motivo: string) {
     const { rows } = await db.query('INSERT INTO pedido_desistencia (tcc_id, motivo) VALUES ($1, $2) RETURNING *', [tccId, motivo]);
     return rows[0];
+  },
+  /** UC12 – pedidos de desistência aguardando o orientador ou a coordenação do curso. */
+  async desistenciasPendentes(db: Db, usuario: { id: number; perfil: string; cursoId: number | null }) {
+    const { rows } = await db.query(
+      `SELECT p.id, p.motivo, p.criado_em, t.id AS tcc_id, t.titulo, al.nome AS aluno
+       FROM pedido_desistencia p JOIN tcc t ON t.id = p.tcc_id JOIN usuario al ON al.id = t.aluno_id
+       WHERE p.status = 'PENDENTE'
+         AND (t.orientador_id = $1 OR ($2 = 'COORDENACAO' AND t.curso_id = $3))
+       ORDER BY p.criado_em`,
+      [usuario.id, usuario.perfil, usuario.cursoId],
+    );
+    return rows;
   },
   async buscarDesistencia(db: Db, id: number) {
     const { rows } = await db.query('SELECT * FROM pedido_desistencia WHERE id = $1 FOR UPDATE', [id]);

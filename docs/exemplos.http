@@ -19,21 +19,21 @@
 POST {{api}}/auth/login
 Content-Type: application/json
 
-{ "email": "mpessoa@uea.edu.br", "senha": "Senha@123" }
+{ "email": "msppessoa@uea.edu.br", "senha": "Senha@123" }
 
 ### A2. Login da Profa. Elloa       Esperado: 200 OK
 # @name loginElloa
 POST {{api}}/auth/login
 Content-Type: application/json
 
-{ "email": "eguedes@uea.edu.br", "senha": "Senha@123" }
+{ "email": "ebgcosta@uea.edu.br", "senha": "Senha@123" }
 
 ### A3. Login do Prof. Fábio        Esperado: 200 OK
 # @name loginFabio
 POST {{api}}/auth/login
 Content-Type: application/json
 
-{ "email": "fsantos@uea.edu.br", "senha": "Senha@123" }
+{ "email": "fssilva@uea.edu.br", "senha": "Senha@123" }
 
 ### A4. Login da aluna Carla        Esperado: 200 OK
 # @name loginCarla
@@ -371,3 +371,242 @@ POST {{api}}/auth/login
 Content-Type: application/json
 
 { "email": "dr.snf22@uea.edu.br", "senha": "Senha@123" }
+
+###############################################################################
+# PARTE J – TP3: CALENDÁRIO (UC13), SITUAÇÃO DO TCC (UC17) E BANCAS (UC19, UC20, UC21)
+# Rode depois de "npm run db:reset". Os dados de exemplo já trazem:
+#  - o calendário do semestre atual nos 3 cursos (etapa Defesa aberta por 30 dias a partir do dia do reset);
+#  - Helena (EC) "Apta à defesa", orientada pelo Prof. Tiago, ainda sem banca;
+#  - Gabriel (EC) com banca que aconteceu ontem (presidente: Profa. Polianny), faltando notas e resultado;
+#  - Karen (LC) com defesa marcada para daqui a 7 dias (aparece na agenda pública).
+###############################################################################
+
+@tokenAurea = {{loginAurea.response.body.$.token}}
+@tokenTiago = {{loginTiago.response.body.$.token}}
+@tokenPolianny = {{loginPolianny.response.body.$.token}}
+@tokenRafael = {{loginRafael.response.body.$.token}}
+@tokenHelena = {{loginHelena.response.body.$.token}}
+@idPolianny = {{loginPolianny.response.body.$.usuario.id}}
+@idRafael = {{loginRafael.response.body.$.usuario.id}}
+@idAlmir = {{loginAlmir.response.body.$.usuario.id}}
+@tokenAlmir = {{loginAlmir.response.body.$.token}}
+@idTccHelena = {{orientandosTiago.response.body.$[0].id}}
+@idBancaGabriel = {{bancasPolianny.response.body.$[0].id}}
+@idBancaHelena = {{bancaHelena.response.body.$.id}}
+
+### J1. Logins (rode os 6)
+# @name loginAurea
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "asmelo@uea.edu.br", "senha": "Senha@123" }
+
+###
+# @name loginTiago
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "tmelo@uea.edu.br", "senha": "Senha@123" }
+
+###
+# @name loginPolianny
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "palima@uea.edu.br", "senha": "Senha@123" }
+
+###
+# @name loginRafael
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "rcosta.externo@exemplo.com", "senha": "Senha@123" }
+
+###
+# @name loginHelena
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "hp.eng22@uea.edu.br", "senha": "Senha@123" }
+
+###
+# @name loginAlmir
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "email": "adjunior@uea.edu.br", "senha": "Senha@123" }
+
+### J2. UC13 – Calendário do curso (qualquer perfil consulta)     Esperado: 200, semestre atual com 5 etapas
+GET {{api}}/calendarios
+Authorization: Bearer {{tokenTiago}}
+
+### J3. UC13 – Coordenação cadastra o calendário de 2027.1     Esperado: 201
+POST {{api}}/calendarios
+Authorization: Bearer {{tokenAurea}}
+Content-Type: application/json
+
+{
+  "semestre": "2027.1",
+  "etapas": [
+    { "etapa": "PROPOSTA",           "dataInicio": "2027-03-01", "dataLimite": "2027-03-31" },
+    { "etapa": "QUALIFICACAO",       "dataInicio": "2027-04-01", "dataLimite": "2027-04-30" },
+    { "etapa": "VERSAO_FINAL",       "dataInicio": "2027-05-03", "dataLimite": "2027-06-04" },
+    { "etapa": "DEFESA",             "dataInicio": "2027-06-07", "dataLimite": "2027-07-02" },
+    { "etapa": "ENTREGA_DEFINITIVA", "dataInicio": "2027-07-05", "dataLimite": "2027-07-16" }
+  ]
+}
+
+### J4. UC13 – Etapa faltando                                       Esperado: 422 "...Faltando: Entrega definitiva"
+POST {{api}}/calendarios
+Authorization: Bearer {{tokenAurea}}
+Content-Type: application/json
+
+{
+  "semestre": "2027.2",
+  "etapas": [
+    { "etapa": "PROPOSTA",     "dataInicio": "2027-08-02", "dataLimite": "2027-08-31" },
+    { "etapa": "QUALIFICACAO", "dataInicio": "2027-09-01", "dataLimite": "2027-09-30" },
+    { "etapa": "VERSAO_FINAL", "dataInicio": "2027-10-01", "dataLimite": "2027-11-05" },
+    { "etapa": "DEFESA",       "dataInicio": "2027-11-08", "dataLimite": "2027-12-10" }
+  ]
+}
+
+### J5. UC17 – Tiago vê seus orientandos (a Helena está "Apta à defesa")   Esperado: 200
+# @name orientandosTiago
+GET {{api}}/orientacao/orientandos
+Authorization: Bearer {{tokenTiago}}
+
+### J6. RD10 – Profa. Polianny (não é orientadora da Helena) tenta mudar a situação   Esperado: 403, "regra": "RD10"
+PATCH {{api}}/tccs/{{idTccHelena}}/situacao
+Authorization: Bearer {{tokenPolianny}}
+Content-Type: application/json
+
+{ "situacao": "EM_DESENVOLVIMENTO", "justificativa": "teste" }
+
+### J7. RD08 – Banca com só 2 titulares (contando o presidente)   Esperado: 422, "regra": "RD08"
+POST {{api}}/bancas
+Authorization: Bearer {{tokenTiago}}
+Content-Type: application/json
+
+{
+  "tccId": {{idTccHelena}},
+  "dataHora": "{{$datetime iso8601 3 d}}",
+  "localOuLink": "Laboratório 3 – EST",
+  "membros": [
+    { "usuarioId": {{idPolianny}}, "papel": "TITULAR" },
+    { "usuarioId": {{idRafael}},   "papel": "SUPLENTE" }
+  ]
+}
+
+### J8. RD09 – Defesa depois da data-limite da etapa Defesa   Esperado: 422, "regra": "RD09"
+POST {{api}}/bancas
+Authorization: Bearer {{tokenTiago}}
+Content-Type: application/json
+
+{
+  "tccId": {{idTccHelena}},
+  "dataHora": "{{$datetime iso8601 40 d}}",
+  "localOuLink": "Laboratório 3 – EST",
+  "membros": [
+    { "usuarioId": {{idPolianny}}, "papel": "TITULAR" },
+    { "usuarioId": {{idRafael}},   "papel": "TITULAR" },
+    { "usuarioId": {{idAlmir}},    "papel": "SUPLENTE" }
+  ]
+}
+
+### J9. UC19 – Tiago cadastra a banca da Helena (ele é o presidente)   Esperado: 201. No terminal: e-mails aos membros e à aluna
+# @name bancaHelena
+POST {{api}}/bancas
+Authorization: Bearer {{tokenTiago}}
+Content-Type: application/json
+
+{
+  "tccId": {{idTccHelena}},
+  "dataHora": "{{$datetime iso8601 3 d}}",
+  "localOuLink": "Laboratório 3 – EST",
+  "membros": [
+    { "usuarioId": {{idPolianny}}, "papel": "TITULAR" },
+    { "usuarioId": {{idRafael}},   "papel": "TITULAR" },
+    { "usuarioId": {{idAlmir}},    "papel": "SUPLENTE" }
+  ]
+}
+
+### J10. UC21 – Agenda pública de defesas (SEM login)   Esperado: 200 com as defesas da Helena e da Karen, sem e-mails
+GET {{api}}/agenda
+
+### J11. UC21 A1 – Helena convida a audiência   Esperado: 200 { "enviados": 2 }. Convites aparecem no terminal
+POST {{api}}/bancas/{{idBancaHelena}}/convites
+Authorization: Bearer {{tokenHelena}}
+Content-Type: application/json
+
+{ "emails": ["familia@exemplo.com", "amigo@exemplo.com"] }
+
+### J12. UC20 – Bancas da Profa. Polianny (a do Gabriel aconteceu ontem)   Esperado: 200
+# @name bancasPolianny
+GET {{api}}/bancas/minhas
+Authorization: Bearer {{tokenPolianny}}
+
+### J13. UC20 – Resultado antes das notas   Esperado: 422 "Ainda faltam as notas de: ..."
+POST {{api}}/bancas/{{idBancaGabriel}}/resultado
+Authorization: Bearer {{tokenPolianny}}
+Content-Type: application/json
+
+{ "resultado": "APROVADO" }
+
+### J14. UC20 – Nota do Prof. Tiago (titular)   Esperado: 201, "faltam": 2
+POST {{api}}/bancas/{{idBancaGabriel}}/notas
+Authorization: Bearer {{tokenTiago}}
+Content-Type: application/json
+
+{ "nota": 8.5, "parecer": "Trabalho bem estruturado." }
+
+### J15. UC20 – Nota do Dr. Rafael (membro externo)   Esperado: 201, "faltam": 1
+POST {{api}}/bancas/{{idBancaGabriel}}/notas
+Authorization: Bearer {{tokenRafael}}
+Content-Type: application/json
+
+{ "nota": 9 }
+
+### J16. UC20 – Suplente tenta lançar nota   Esperado: 422 "Suplentes não lançam nota"
+POST {{api}}/bancas/{{idBancaGabriel}}/notas
+Authorization: Bearer {{tokenAlmir}}
+Content-Type: application/json
+
+{ "nota": 10 }
+
+### J17. UC20 – Nota da Profa. Polianny (presidente)   Esperado: 201, "faltam": 0
+POST {{api}}/bancas/{{idBancaGabriel}}/notas
+Authorization: Bearer {{tokenPolianny}}
+Content-Type: application/json
+
+{ "nota": 9.5 }
+
+### J18. RD11 – Aprovado com correções sem descrever as correções   Esperado: 422, "regra": "RD11"
+POST {{api}}/bancas/{{idBancaGabriel}}/resultado
+Authorization: Bearer {{tokenPolianny}}
+Content-Type: application/json
+
+{ "resultado": "APROVADO_COM_CORRECOES" }
+
+### J19. UC20 – Resultado da defesa   Esperado: 201, "status": "REALIZADA", "nota_final": 9. TCC do Gabriel fica "APROVADO"
+POST {{api}}/bancas/{{idBancaGabriel}}/resultado
+Authorization: Bearer {{tokenPolianny}}
+Content-Type: application/json
+
+{ "resultado": "APROVADO_COM_CORRECOES", "observacao": "Revisar a seção de resultados e incluir a matriz de confusão." }
+
+### J20. UC20 A1 – Dados da ata   Esperado: 200 com as 3 notas e o resultado
+GET {{api}}/bancas/{{idBancaGabriel}}/ata
+Authorization: Bearer {{tokenPolianny}}
+
+### J21. UC17 – Coordenação devolve o TCC da Helena para desenvolvimento
+###      Esperado: 200. A banca da Helena é cancelada e os membros recebem aviso
+PATCH {{api}}/tccs/{{idTccHelena}}/situacao
+Authorization: Bearer {{tokenAurea}}
+Content-Type: application/json
+
+{ "situacao": "EM_DESENVOLVIMENTO", "justificativa": "Faltou a validação em campo" }
+
+### J22. UC17 – TCCs do curso (coordenação)   Esperado: 200, Helena "EM_DESENVOLVIMENTO" com banca "CANCELADA"
+GET {{api}}/tccs
+Authorization: Bearer {{tokenAurea}}

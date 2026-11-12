@@ -40,6 +40,11 @@ orientacaoRoutes.patch('/solicitacoes/:id', exigirPerfil('ORIENTADOR'), async (r
   res.json(await orientacaoService.responder(usuarioDe(req).id, Number(req.params.id), responderSchema.parse(req.body)));
 });
 
+// Orientandos do professor (TCCs em andamento que ele orienta ou coorienta)
+orientacaoRoutes.get('/orientandos', exigirPerfil('ORIENTADOR'), async (req, res) => {
+  res.json(await orientacaoService.meusOrientandos(usuarioDe(req).id));
+});
+
 // UC09 – reunião de alinhamento e encontros
 orientacaoRoutes.post('/tccs/:tccId/reunioes', exigirPerfil('ORIENTADOR'), async (req, res) => {
   res.status(201).json(await orientacaoService.agendarReuniao(usuarioDe(req).id, Number(req.params.tccId), reuniaoSchema.parse(req.body)));
@@ -52,6 +57,9 @@ orientacaoRoutes.post('/tccs/:tccId/encontros', exigirPerfil('ORIENTADOR'), asyn
 orientacaoRoutes.post('/trocas', exigirPerfil('ALUNO'), async (req, res) => {
   res.status(201).json(await orientacaoService.solicitarTroca(usuarioDe(req).id, trocaSchema.parse(req.body)));
 });
+orientacaoRoutes.get('/trocas/pendentes', exigirPerfil('COORDENACAO'), async (req, res) => {
+  res.json(await orientacaoService.trocasPendentes(usuarioDe(req)));
+});
 orientacaoRoutes.patch('/trocas/:id', exigirPerfil('COORDENACAO'), async (req, res) => {
   res.json(await orientacaoService.decidirTroca(usuarioDe(req), Number(req.params.id), decisaoTrocaSchema.parse(req.body)));
 });
@@ -59,6 +67,9 @@ orientacaoRoutes.patch('/trocas/:id', exigirPerfil('COORDENACAO'), async (req, r
 // UC12 – desistência
 orientacaoRoutes.post('/desistencias', exigirPerfil('ALUNO'), async (req, res) => {
   res.status(201).json(await orientacaoService.pedirDesistencia(usuarioDe(req).id, desistenciaSchema.parse(req.body).motivo));
+});
+orientacaoRoutes.get('/desistencias/pendentes', exigirPerfil('ORIENTADOR', 'COORDENACAO'), async (req, res) => {
+  res.json(await orientacaoService.desistenciasPendentes(usuarioDe(req)));
 });
 orientacaoRoutes.patch('/desistencias/:id', exigirPerfil('ORIENTADOR', 'COORDENACAO'), async (req, res) => {
   res.json(await orientacaoService.decidirDesistencia(usuarioDe(req), Number(req.params.id), confirmacaoSchema.parse(req.body).confirmar));
