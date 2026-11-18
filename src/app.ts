@@ -16,11 +16,23 @@ import { declaracoesRoutes, verificarRoutes } from './modules/declaracoes/declar
 import { contaRoutes } from './modules/conta/conta.routes.js';
 import { painelRoutes } from './modules/painel/painel.routes.js';
 import { acervoRoutes, divulgacaoRoutes } from './modules/divulgacao/divulgacao.routes.js';
+import { verificarPrazos } from './modules/acompanhamento/prazos.service.js';
 
 export const app = express();
 app.use(express.json({ limit: '25mb' })); // versões do TCC chegam em PDF (até 10 MB) e o banner em imagem
 
 app.get('/api/saude', (_req, res) => { res.json({ status: 'ok', sistema: 'SAG-TCC' }); });
+
+// Verificação automática de prazos chamada pela Vercel (Cron Job, uma vez por dia).
+// Só funciona com o segredo CRON_SECRET, que a própria Vercel envia no cabeçalho Authorization.
+app.get('/api/cron/prazos', async (req, res) => {
+  const segredo = process.env.CRON_SECRET;
+  if (!segredo || req.headers.authorization !== `Bearer ${segredo}`) {
+    res.status(401).json({ erro: 'Não autorizado' });
+    return;
+  }
+  res.json(await verificarPrazos());
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/agenda', agendaRoutes);          // agenda de defesas: pública, sem login (UC21)
@@ -70,3 +82,6 @@ if (existsSync(pastaWeb)) {
 
 app.use((_req, res) => { res.status(404).json({ erro: 'Rota não encontrada' }); });
 app.use(tratarErros);
+
+// A Vercel usa este app diretamente (no computador, quem liga o servidor é o src/server.ts)
+export default app;

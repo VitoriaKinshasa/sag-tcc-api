@@ -91,3 +91,26 @@ CREATE TABLE IF NOT EXISTS regra_nucleo (
 );
 -- RD05: limite TOTAL de orientandos por professor, somando todos os cursos
 INSERT INTO regra_nucleo (chave, valor) VALUES ('limite_orientandos', 5) ON CONFLICT (chave) DO NOTHING;
+
+-- ---------- Banner do TCC (UC25) ----------
+-- Cada banner gerado: os textos revisados, o PDF (A1) e a imagem PNG
+CREATE TABLE IF NOT EXISTS banner_tcc (
+    id                   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    tcc_id               BIGINT NOT NULL REFERENCES tcc(id),
+    conteudo             JSONB NOT NULL,
+    arquivo_pdf          BYTEA NOT NULL,
+    arquivo_png          BYTEA NOT NULL,
+    gerado_por           BIGINT NOT NULL REFERENCES usuario(id),
+    gerado_em            TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_banner_tcc ON banner_tcc (tcc_id, gerado_em);
+
+-- Cada pedido de sugestão à IA (para o limite de sugestões por dia)
+CREATE TABLE IF NOT EXISTS banner_sugestao (
+    id                   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    tcc_id               BIGINT NOT NULL REFERENCES tcc(id),
+    usuario_id           BIGINT NOT NULL REFERENCES usuario(id),
+    sucesso              BOOLEAN NOT NULL,
+    criado_em            TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_banner_sugestao ON banner_sugestao (usuario_id, criado_em);
