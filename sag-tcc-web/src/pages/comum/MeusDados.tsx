@@ -91,7 +91,7 @@ function PedirCorrecao() {
   const [mensagem, setMensagem] = useState('');
   const { executar } = useFeedback();
   const enviar = async () => {
-    const r = await executar(() => api('POST', '/me/correcao', { mensagem }), 'Pedido enviado para a coordenação do seu curso.');
+    const r = await executar(() => api<{ mensagem: string }>('POST', '/me/correcao', { mensagem }), (x) => `${x.mensagem}.`);
     if (r) setMensagem('');
   };
   return (

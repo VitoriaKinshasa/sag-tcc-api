@@ -1,5 +1,5 @@
-import { CalendarDays, Check, ChevronDown, ChevronUp, FileText } from 'lucide-react';
-import { useState } from 'react';
+import { CalendarDays, Check, ChevronDown, ChevronUp, FileText, Image } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '../../api';
 import { Modal } from '../../components/Modal';
@@ -7,6 +7,7 @@ import { Ficha, Secao } from '../../components/blocos';
 import { Campo, CampoSelecao, CampoTexto, Estado, Pagina, Selo } from '../../components/ui';
 import { useFeedback } from '../../feedback';
 import { talvez, useCarregar } from '../../hooks';
+import { ModalVisibilidade, NOME_VISIBILIDADE } from '../comum/compartilhado';
 import type { Area, Banca, Evento, Id, Orientador, Tcc } from '../../types';
 import { type Cor, dataHoraLonga, dia, mesmoId, nota, RESULTADOS } from '../../util';
 
@@ -106,6 +107,8 @@ export function MeuTcc() {
 
             {!semOrientador && <ResultadoDefesa banca={banca} />}
 
+            {!['REPROVADO', 'NAO_APRESENTADO', 'CANCELADO'].includes(tcc.situacao) && <AcervoPublico tcc={tcc} aoMudar={c.recarregar} />}
+
             <Historico tccId={tcc.id} />
 
             {editando && (
@@ -117,6 +120,32 @@ export function MeuTcc() {
         );
       }}
     </Estado>
+  );
+}
+
+/** UC27 e UC25 – como o TCC aparece no acervo público e, depois da aprovação, o banner. */
+function AcervoPublico({ tcc, aoMudar }: { tcc: Tcc; aoMudar: () => void }) {
+  const [alterando, setAlterando] = useState(false);
+  const aprovado = tcc.situacao === 'APROVADO' || tcc.situacao === 'APROVADO_PUBLICACAO';
+  const visibilidade = tcc.visibilidade ?? 'SOMENTE_METADADOS';
+  return (
+    <Secao titulo="Divulgação" extra={aprovado ? <Link to={`/acervo/${tcc.id}`} className="link-secao">Ver no acervo público</Link> : undefined}>
+      <div className="caixa caixa-ficha">
+        <Ficha linhas={[
+          ['Acervo público', <span key="v" className="linha-acao">
+            <span>{NOME_VISIBILIDADE[visibilidade]}
+              <small className="bloco">{visibilidade === 'TEXTO_COMPLETO' ? 'Qualquer pessoa pode baixar o PDF da entrega definitiva.' : 'Aparecem só título, resumo, autor, orientador, área e ano.'}
+                {!aprovado && ' Passa a valer quando o TCC for aprovado.'}</small></span>
+            <button className="botao pequeno secundario" onClick={() => setAlterando(true)}>Alterar</button>
+          </span>],
+          ...(aprovado ? [['Banner', <span key="b" className="linha-acao">
+            <span>Monte o banner do seu TCC para mostras e eventos<small className="bloco">Com sugestão de textos por inteligência artificial. Você revisa tudo antes de gerar.</small></span>
+            <Link className="botao pequeno" to="/meu-tcc/banner"><Image className="ic" aria-hidden="true" />Gerar banner</Link>
+          </span>] as [string, ReactNode]] : []),
+        ]} />
+      </div>
+      {alterando && <ModalVisibilidade tcc={tcc} aoFechar={() => setAlterando(false)} aoSalvar={() => { setAlterando(false); aoMudar(); }} />}
+    </Secao>
   );
 }
 

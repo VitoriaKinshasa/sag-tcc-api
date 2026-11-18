@@ -10,6 +10,10 @@ import { Inicio } from './pages/Inicio';
 import { Agenda, AgendaPublica } from './pages/comum/Agenda';
 import { AtaDefesa, Bancas } from './pages/comum/Bancas';
 import { MinhaDefesa } from './pages/aluno/MinhaDefesa';
+import { Banner } from './pages/aluno/Banner';
+import { Acervo, AcervoDetalhe } from './pages/comum/Acervo';
+import { Painel } from './pages/coordenacao/Painel';
+import { Auditoria } from './pages/coordenacao/Auditoria';
 import { DeclaracaoImpressa, Declaracoes } from './pages/comum/Declaracoes';
 import { MeusDados } from './pages/comum/MeusDados';
 import { Verificar } from './pages/comum/Verificar';
@@ -55,6 +59,8 @@ export function App() {
         <Route path="/agenda-publica" element={<AgendaPublica />} />
         <Route path="/verificar" element={<Verificar />} />
         <Route path="/verificar/:codigo" element={<Verificar />} />
+        <Route path="/acervo" element={<Acervo />} />
+        <Route path="/acervo/:id" element={<AcervoDetalhe />} />
 
         <Route element={<ExigeLogin />}>
           <Route index element={<Inicio />} />
@@ -67,6 +73,7 @@ export function App() {
 
           {/* Aluno */}
           <Route path="meu-tcc" element={<Somente perfis={['ALUNO']}><MeuTcc /></Somente>} />
+          <Route path="meu-tcc/banner" element={<Somente perfis={['ALUNO']}><Banner /></Somente>} />
           <Route path="versoes" element={<Somente perfis={['ALUNO']}><Versoes /></Somente>} />
           <Route path="prazos" element={<Somente perfis={['ALUNO']}><Prazos /></Somente>} />
           <Route path="defesa" element={<Somente perfis={['ALUNO']}><MinhaDefesa /></Somente>} />
@@ -86,10 +93,12 @@ export function App() {
           <Route path="calendario" element={<Somente perfis={['COORDENACAO']}><Calendario /></Somente>} />
           <Route path="trocas" element={<Somente perfis={['COORDENACAO']}><Trocas /></Somente>} />
           <Route path="publicacoes" element={<Somente perfis={['COORDENACAO']}><Publicacoes /></Somente>} />
-          <Route path="usuarios" element={<Somente perfis={['COORDENACAO']}><Usuarios /></Somente>} />
-          <Route path="cursos" element={<Somente perfis={['COORDENACAO']}><Cursos /></Somente>} />
+          <Route path="usuarios" element={<Somente perfis={['COORDENACAO', 'ADMINISTRADOR']}><Usuarios /></Somente>} />
+          <Route path="cursos" element={<Somente perfis={['COORDENACAO', 'ADMINISTRADOR']}><Cursos /></Somente>} />
+          <Route path="painel" element={<Somente perfis={['COORDENACAO']}><Painel /></Somente>} />
+          <Route path="auditoria" element={<Somente perfis={['COORDENACAO', 'ADMINISTRADOR']}><Auditoria /></Somente>} />
           <Route path="relatorios" element={<Somente perfis={['COORDENACAO']}><Relatorios /></Somente>} />
-          <Route path="emails" element={<Somente perfis={['COORDENACAO']}><Emails /></Somente>} />
+          <Route path="emails" element={<Somente perfis={['COORDENACAO', 'ADMINISTRADOR']}><Emails /></Somente>} />
 
           <Route path="*" element={<Vazio icone={Compass}>Página não encontrada.</Vazio>} />
         </Route>

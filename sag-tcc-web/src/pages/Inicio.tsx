@@ -1,5 +1,5 @@
 // Tela inicial de cada perfil: saudação, "Para fazer" (só quando há algo), etapas do TCC e avisos recentes.
-import { Check, ClipboardList, FileText, Send, Upload, UserRoundSearch } from 'lucide-react';
+import { Check, ClipboardList, FileText, Send, Upload, UserPlus, UserRoundSearch } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
@@ -7,7 +7,7 @@ import { useUsuario } from '../auth';
 import { ParaFazer, Secao, type ItemFazer } from '../components/blocos';
 import { Estado, SeloSituacao } from '../components/ui';
 import { talvez, useCarregar } from '../hooks';
-import type { Banca, Calendario, Notificacao, Orientando, PrazoEtapa, Prazos, Tcc, TccCurso, Usuario, Versao } from '../types';
+import type { Banca, Calendario, Curso, Notificacao, Orientando, PrazoEtapa, Prazos, Tcc, TccCurso, Usuario, Versao } from '../types';
 import { dia, mesmoId, NOME_ETAPA, primeiroNome, semestreAtual, SITUACOES } from '../util';
 import { buscarMeuTcc } from './aluno/MeuTcc';
 
@@ -38,6 +38,7 @@ function subtitulo(u: Usuario, me: Me | null) {
     case 'ORIENTADOR': return `${tituloProfessor(u.nome)} · ${est}`;
     case 'COORDENACAO': return `${tituloProfessor(u.nome)} · Coordenação${me?.curso ? ` de ${me.curso}` : ''}`;
     case 'MEMBRO_BANCA': return me?.externo ? `Membro de banca${me.instituicao ? ` · ${me.instituicao}` : ''}` : `${tituloProfessor(u.nome)} · ${est}`;
+    case 'ADMINISTRADOR': return 'Administração do sistema · Núcleo de Computação (NUCOMP)';
   }
 }
 
@@ -46,6 +47,7 @@ export function Inicio() {
   const me = useCarregar(() => talvez(api<Me>('GET', '/me')), []);
   const conteudo: Record<typeof u.perfil, ReactNode> = {
     ALUNO: <InicioAluno />, ORIENTADOR: <InicioOrientador />, MEMBRO_BANCA: <InicioMembro />, COORDENACAO: <InicioCoordenacao />,
+    ADMINISTRADOR: <InicioAdministrador />,
   };
   return (
     <section className="pagina inicio">
@@ -345,6 +347,59 @@ function InicioCoordenacao() {
                 </ul>
               </Secao>
             )}
+            <AvisosRecentes notificacoes={notificacoes} />
+          </>
+        );
+      }}
+    </Estado>
+  );
+}
+
+/* ---------------------------------------------------------------- Administrador */
+
+interface PessoaCadastro { id: string | number; perfil: string; externo: boolean; ativo: boolean }
+
+/** Administrador: cursos e coordenações em dia, e o que falta cadastrar. */
+function InicioAdministrador() {
+  const c = useCarregar(() => Promise.all([
+    api<Curso[]>('GET', '/cursos'),
+    api<PessoaCadastro[]>('GET', '/usuarios'),
+    api<Notificacao[]>('GET', '/notificacoes'),
+  ]), []);
+  return (
+    <Estado c={c}>
+      {([cursos, pessoas, notificacoes]) => {
+        const ativos = cursos.filter((x) => x.ativo);
+        const semCoordenacao = ativos.filter((x) => !x.coordenacao);
+        const contar = (f: (p: PessoaCadastro) => boolean) => pessoas.filter((p) => p.ativo && f(p)).length;
+        const itens: ItemFazer[] = semCoordenacao.map((x) => ({
+          titulo: `Cadastrar a coordenação de ${x.nome} (${x.sigla})`,
+          prazo: 'sem coordenação, o curso não consegue cadastrar alunos nem o calendário', urgente: true,
+          acao: { texto: 'Cadastrar', para: '/usuarios?aba=coordenacoes', icone: UserPlus },
+        }));
+        return (
+          <>
+            <ParaFazer itens={itens} />
+            <Secao titulo="Cursos e coordenações" extra={<Link to="/cursos" className="link-secao">Cursos e regras</Link>}>
+              {ativos.length === 0 ? <p className="texto-calmo">Nenhum curso cadastrado ainda. Comece cadastrando os cursos.</p> : (
+                <ul className="linhas">
+                  {ativos.map((x) => (
+                    <li key={x.id}>
+                      <span>{x.nome} ({x.sigla})
+                        <small className="bloco">{x.coordenacao ? `Coordenação: ${x.coordenacao}` : 'Sem coordenação cadastrada'}</small></span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Secao>
+            <Secao titulo="Cadastros" extra={<Link to="/usuarios" className="link-secao">Ver usuários</Link>}>
+              <ul className="linhas">
+                <li><span>Coordenações</span><strong>{contar((p) => p.perfil === 'COORDENACAO')}</strong></li>
+                <li><span>Professores do NUCOMP</span><strong>{contar((p) => !p.externo && ['ORIENTADOR', 'MEMBRO_BANCA'].includes(p.perfil))}</strong></li>
+                <li><span>Membros externos</span><strong>{contar((p) => p.externo)}</strong></li>
+                <li><span>Administradores</span><strong>{contar((p) => p.perfil === 'ADMINISTRADOR')}</strong></li>
+              </ul>
+            </Secao>
             <AvisosRecentes notificacoes={notificacoes} />
           </>
         );

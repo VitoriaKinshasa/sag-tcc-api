@@ -21,7 +21,7 @@ export function Emails() {
   const [aberto, setAberto] = useState<Id | null>(null);
 
   return (
-    <Pagina titulo="E-mails enviados (simulação)" descricao="O sistema ainda não envia e-mails de verdade. Aqui aparece tudo o que seria enviado para as pessoas do seu curso, como o link de primeiro acesso.">
+    <Pagina titulo="E-mails enviados (simulação)" descricao="O sistema ainda não envia e-mails de verdade. Aqui aparece tudo o que seria enviado (para a coordenação, as pessoas do seu curso), como o link de primeiro acesso.">
       <Dica tipo="alerta">Use só para testes. Quando o sistema enviar e-mails de verdade, esta tela deixa de existir, porque os links de senha são pessoais.</Dica>
       <Cartao>
         <Campo rotulo="Buscar" type="search" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Nome, e-mail ou assunto" />

@@ -53,10 +53,22 @@ export const MENU: Record<Perfil, ItemMenu[]> = {
     ] },
     { rotulo: 'Cadastros', filhos: [
       { rotulo: 'Usuários', caminho: '/usuarios' },
-      { rotulo: 'Cursos, áreas e regras', caminho: '/cursos' },
+      { rotulo: 'Regras do curso', caminho: '/cursos' },
       { rotulo: 'E-mails enviados (simulação)', caminho: '/emails' },
     ] },
-    { rotulo: 'Relatórios', caminho: '/relatorios' },
+    { rotulo: 'Painel', filhos: [
+      { rotulo: 'Painel de governança', caminho: '/painel' },
+      { rotulo: 'Relatórios', caminho: '/relatorios' },
+      { rotulo: 'Auditoria', caminho: '/auditoria' },
+    ] },
     { rotulo: 'Agenda de defesas', caminho: '/agenda' },
+  ],
+  // Administrador: monta a estrutura (cursos, coordenações, professores e regra do NUCOMP). Não orienta nem participa de bancas.
+  ADMINISTRADOR: [
+    { rotulo: 'Início', caminho: '/' },
+    { rotulo: 'Usuários', caminho: '/usuarios' },
+    { rotulo: 'Cursos e regras', caminho: '/cursos' },
+    { rotulo: 'Auditoria', caminho: '/auditoria' },
+    { rotulo: 'E-mails enviados (simulação)', caminho: '/emails' },
   ],
 };

@@ -45,6 +45,7 @@ export type Cor = 'verde' | 'vermelho' | 'amarelo' | 'azul' | 'cinza';
 
 export const PERFIS: Record<Perfil, string> = {
   ALUNO: 'Aluno(a)', ORIENTADOR: 'Professor(a) orientador(a)', COORDENACAO: 'Coordenação', MEMBRO_BANCA: 'Membro de banca',
+  ADMINISTRADOR: 'Administração do sistema',
 };
 
 export const SITUACOES: Record<Situacao, [string, Cor]> = {

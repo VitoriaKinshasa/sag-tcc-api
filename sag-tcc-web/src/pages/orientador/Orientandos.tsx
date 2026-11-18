@@ -1,16 +1,18 @@
-import { Users } from 'lucide-react';
+import { ChevronDown, ChevronUp, Users } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api, ErroApi } from '../../api';
 import { Modal } from '../../components/Modal';
 import { Campo, CampoTexto, Estado, Pagina, SeloSituacao, Vazio } from '../../components/ui';
 import { useFeedback } from '../../feedback';
 import { useCarregar } from '../../hooks';
-import type { Orientando } from '../../types';
+import type { Id, Orientando, Situacao, Visibilidade } from '../../types';
 import { agoraLocal, paraISO } from '../../util';
-import { ModalHistorico, ModalSituacao } from '../comum/compartilhado';
+import { ModalHistorico, ModalSituacao, ModalVisibilidade, NOME_VISIBILIDADE } from '../comum/compartilhado';
 
-type Acao = 'reuniao' | 'encontro' | 'situacao' | 'historico';
+type Acao = 'reuniao' | 'encontro' | 'situacao' | 'historico' | 'visibilidade';
+
+interface Aprovado { id: Id; titulo: string; situacao: Situacao; visibilidade: Visibilidade; aluno: string; curso: string; ano: number }
 
 export function Orientandos() {
   const c = useCarregar(() => api<Orientando[]>('GET', '/orientacao/orientandos'), []);
@@ -44,6 +46,7 @@ export function Orientandos() {
                     {orientador && <button className="botao pequeno secundario" onClick={() => setAberto({ t, acao: 'encontro' })}>Registrar encontro</button>}
                     {orientador && <button className="botao pequeno secundario" onClick={() => setAberto({ t, acao: 'situacao' })}>Alterar situação</button>}
                     <button className="botao pequeno secundario" onClick={() => setAberto({ t, acao: 'historico' })}>Histórico</button>
+                    {orientador && <button className="botao pequeno secundario" onClick={() => setAberto({ t, acao: 'visibilidade' })}>Visibilidade no acervo</button>}
                   </div>
                   {orientador && t.situacao === 'EM_DESENVOLVIMENTO' && <p className="ajuda">Para cadastrar a banca, altere a situação para “Apto à defesa”.</p>}
                 </li>
@@ -52,11 +55,54 @@ export function Orientandos() {
           </ul>
         )}
       </Estado>
+      <Aprovados />
+      {aberto?.acao === 'visibilidade' && <ModalVisibilidade tcc={aberto.t} aoFechar={fechar} aoSalvar={() => { fechar(); c.recarregar(); }} />}
       {aberto?.acao === 'reuniao' && <ModalReuniao t={aberto.t} aoFechar={fechar} />}
       {aberto?.acao === 'encontro' && <ModalEncontro t={aberto.t} aoFechar={fechar} />}
       {aberto?.acao === 'historico' && <ModalHistorico tccId={aberto.t.id} titulo={aberto.t.titulo} aoFechar={fechar} />}
       {aberto?.acao === 'situacao' && <ModalSituacao tcc={aberto.t} aoFechar={fechar} aoSalvar={() => { fechar(); c.recarregar(); }} />}
     </Pagina>
+  );
+}
+
+/** TCCs já aprovados que o professor orientou: ficam escondidos até clicar (UC27: ele também define a visibilidade). */
+function Aprovados() {
+  const c = useCarregar(() => api<Aprovado[]>('GET', '/orientacao/aprovados'), []);
+  const [mostrar, setMostrar] = useState(false);
+  const [alterando, setAlterando] = useState<Aprovado | null>(null);
+  const lista = c.dados ?? [];
+  if (!lista.length) return null;
+  return (
+    <section className="secao secao-aprovados">
+      <button className="botao-historico" aria-expanded={mostrar} onClick={() => setMostrar((v) => !v)}>
+        {mostrar ? <ChevronUp className="ic" aria-hidden="true" /> : <ChevronDown className="ic" aria-hidden="true" />}
+        {mostrar ? 'Esconder TCCs já aprovados' : `Ver TCCs já aprovados (${lista.length})`}
+      </button>
+      {mostrar && (
+        <ul className="caixa lista-orientandos">
+          {lista.map((t) => (
+            <li key={t.id}>
+              <div className="orientando-cabeca">
+                <div>
+                  <strong>{t.aluno.replace(/\s*\((aluna|aluno)\)$/i, '')}</strong>
+                  <span className="texto-calmo"> · {t.curso} · {t.ano}</span>
+                  <small className="bloco">{t.titulo}</small>
+                </div>
+                <div className="selos"><SeloSituacao situacao={t.situacao} /></div>
+              </div>
+              <div className="linha-acao">
+                <span className="texto-calmo">Acervo público: <strong>{NOME_VISIBILIDADE[t.visibilidade]}</strong></span>
+                <span className="acoes">
+                  <Link className="botao pequeno secundario" to={`/acervo/${t.id}`}>Ver no acervo</Link>
+                  <button className="botao pequeno secundario" onClick={() => setAlterando(t)}>Alterar visibilidade</button>
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {alterando && <ModalVisibilidade tcc={alterando} aoFechar={() => setAlterando(null)} aoSalvar={() => { setAlterando(null); c.recarregar(); }} />}
+    </section>
   );
 }
 

@@ -1,14 +1,15 @@
-import { CalendarPlus, FileText, GraduationCap, PenLine } from 'lucide-react';
-import { useState } from 'react';
+import { CalendarPlus, Check, Clock, Download, GraduationCap, PenLine } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, baixar, lerBase64 } from '../../api';
 import { useUsuario } from '../../auth';
 import { EscolherPdf } from '../../components/EscolherPdf';
 import { Modal } from '../../components/Modal';
+import { Ficha } from '../../components/blocos';
 import { Campo, CampoSelecao, CampoTexto, Cartao, Dica, Estado, Pagina, Selo, SeloDe, Vazio } from '../../components/ui';
 import { useFeedback } from '../../feedback';
 import { useCarregar } from '../../hooks';
-import type { Ata, Banca, Resultado } from '../../types';
+import type { Ata, Banca, MembroBanca, Resultado } from '../../types';
 import { agoraLocal, dataHora, dataHoraLonga, dia, mesmoId, nota, PAPEIS, paraISO, RESULTADOS, STATUS_BANCA } from '../../util';
 import { Local } from './Agenda';
 
@@ -76,61 +77,98 @@ function CartaoBanca({ banca: b, abrir }: { banca: Banca; abrir: (a: Acao) => vo
   const lancadas = avaliadores.filter((m) => m.notaRegistrada).length;
   const presidente = papel === 'PRESIDENTE';
 
+  const dias = b.prazo_correcoes ? diasAte(b.prazo_correcoes) : null;
+  const linhas: [string, ReactNode][] = [
+    ['Título', <strong key="t">{b.titulo}</strong>],
+    ['Aluno(a)', b.aluno],
+    ['Curso', b.curso],
+    ['Situação', <span key="s" className="selos"><SeloDe mapa={STATUS_BANCA} valor={b.status} />{papel && <Selo cor="cinza">Você: {PAPEIS[papel]}</Selo>}</span>],
+    ['Data', diaSemana(b.data_hora)],
+    ['Horário', horario(b.data_hora)],
+    ['Local', <Local key="l" texto={b.local_ou_link} />],
+  ];
+  if (b.resultado) {
+    linhas.push(['Resultado', RESULTADOS[b.resultado][0]], ['Nota final', notaCurta(b.nota_final)]);
+  }
+  if (b.resultado === 'APROVADO_COM_CORRECOES' && b.prazo_correcoes) {
+    linhas.push(['Prazo para entregar as correções', <span key="p">até {dia(b.prazo_correcoes)}
+      {b.correcoes_pendentes && dias != null
+        ? <span className={dias < 0 ? 'texto-erro' : 'texto-faltam'}> – {dias < 0 ? 'prazo vencido' : dias === 0 ? 'vence hoje' : `faltam ${dias} dia${dias === 1 ? '' : 's'}`}</span>
+        : <span className="texto-calmo"> – correções entregues</span>}</span>]);
+  }
+  if (b.observacao) linhas.push([b.resultado === 'REPROVADO' ? 'Justificativa da banca' : 'Observação da banca', b.observacao]);
+  if (b.status === 'CANCELADA' && b.motivo_cancelamento) linhas.push(['Motivo do cancelamento', b.motivo_cancelamento]);
+
+  const botoes = [
+    agendada && avaliador && jaAconteceu && !minhaNota && <button key="n" className="botao" onClick={() => abrir('nota')}>Lançar minha nota</button>,
+    agendada && presidente && jaAconteceu && <button key="r" className="botao" onClick={() => abrir('resultado')}>Registrar resultado</button>,
+    agendada && presidente && !jaAconteceu && <button key="m" className="botao secundario" onClick={() => abrir('remarcar')}>Remarcar</button>,
+    agendada && presidente && <button key="s" className="botao secundario" onClick={() => abrir('substituir')}>Suplente assume</button>,
+    agendada && !jaAconteceu && (presidente || souAluno) && <button key="c" className="botao secundario" onClick={() => abrir('convites')}>Convidar pessoas</button>,
+    agendada && !jaAconteceu && <button key="a" className="botao secundario com-icone-botao" onClick={() => executar(() => baixar(`/bancas/${b.id}/agenda.ics`, 'defesa-tcc.ics'))}><CalendarPlus className="ic" aria-hidden="true" />Adicionar à minha agenda</button>,
+    agendada && (presidente || coordenacao) && <button key="x" className="botao secundario perigo-texto" onClick={() => abrir('cancelar')}>Cancelar banca</button>,
+    b.status === 'REALIZADA' && <Link key="v" className="botao secundario" to={`/ata/${b.id}`}>Ver ata da defesa</Link>,
+  ].filter(Boolean);
+
   return (
-    <Cartao className={`banca banca-${b.status.toLowerCase()}`}
-      titulo={b.titulo}
-      descricao={`${b.aluno} · ${b.curso}`}
-      acoes={<span className="selos"><SeloDe mapa={STATUS_BANCA} valor={b.status} />{papel && <Selo cor="cinza">Você: {PAPEIS[papel]}</Selo>}</span>}>
-      <dl className="infos">
-        <div className="info"><dt>Quando</dt><dd>{dataHoraLonga(b.data_hora)}</dd></div>
-        <div className="info"><dt>Onde</dt><dd><Local texto={b.local_ou_link} /></dd></div>
-        {b.resultado && <div className="info"><dt>Resultado</dt><dd><SeloDe mapa={RESULTADOS} valor={b.resultado} /> Nota final: <strong>{nota(b.nota_final)}</strong></dd></div>}
-        {b.resultado === 'APROVADO_COM_CORRECOES' && b.prazo_correcoes && (
-          <div className="info"><dt>Prazo das correções</dt><dd>{dia(b.prazo_correcoes)} {b.correcoes_pendentes ? <Selo cor="amarelo">Aguardando</Selo> : <Selo cor="verde">Entregues</Selo>}</dd></div>
-        )}
-      </dl>
-      {b.status === 'CANCELADA' && b.motivo_cancelamento && <Dica tipo="alerta">Banca cancelada. Motivo: {b.motivo_cancelamento}</Dica>}
-      {b.observacao && <Dica>{b.resultado === 'REPROVADO' ? 'Justificativa: ' : 'Correções pedidas: '}{b.observacao}</Dica>}
+    <article className={`caixa banca banca-${b.status.toLowerCase()}`}>
+
+      <Ficha linhas={linhas} />
 
       {agendada && !souAluno && (
-        <div className="versao-final">
-          <FileText className="ic-medio" aria-hidden="true" />
+        <div className="banca-versao">
+          <span className="banca-rotulo">Versão final do TCC</span>
           {b.versao_final ? (
-            <>
-              <span><strong>Versão final do TCC</strong><small className="bloco">Versão {b.versao_final.numero} · enviada em {dataHora(b.versao_final.enviadoEm)}</small></span>
-              <button className="botao pequeno" onClick={() => executar(() => baixar(`/versoes/${b.versao_final!.id}/arquivo`, b.versao_final!.arquivoNome))}>Baixar PDF</button>
-            </>
-          ) : <span>O aluno ainda não enviou a versão final.</span>}
+            <span className="banca-versao-dados">
+              <span>Versão {b.versao_final.numero} · enviada em {dataHora(b.versao_final.enviadoEm)}</span>
+              <button className="botao pequeno secundario com-icone-botao" onClick={() => executar(() => baixar(`/versoes/${b.versao_final!.id}/arquivo`, b.versao_final!.arquivoNome))}>
+                <Download className="ic" aria-hidden="true" />Baixar PDF</button>
+            </span>
+          ) : <span className="texto-calmo">O aluno ainda não enviou a versão final.</span>}
         </div>
       )}
 
-      <h3 className="subtitulo">Banca examinadora</h3>
-      <ul className="membros">
-        {(b.membros ?? []).map((m) => (
-          <li key={String(m.usuarioId)}>
-            <span>{m.nome}{m.externo && <small> · {m.instituicao || 'membro externo'}</small>}</span>
-            <span className="selos">
-              <Selo cor="cinza">{PAPEIS[m.papel]}</Selo>
-              {agendada && jaAconteceu && m.papel !== 'SUPLENTE' && (m.notaRegistrada ? <Selo cor="verde">Nota lançada</Selo> : <Selo cor="amarelo">Nota pendente</Selo>)}
-            </span>
-          </li>
-        ))}
-      </ul>
-      {agendada && jaAconteceu && <p className="ajuda">{lancadas} de {avaliadores.length} notas lançadas. As notas só ficam visíveis na ata, depois do resultado.</p>}
-      {agendada && !jaAconteceu && avaliador && <p className="ajuda">As notas poderão ser lançadas depois do horário da defesa.</p>}
-
-      <div className="acoes">
-        {agendada && avaliador && jaAconteceu && !minhaNota && <button className="botao" onClick={() => abrir('nota')}>Lançar minha nota</button>}
-        {agendada && presidente && jaAconteceu && <button className="botao" onClick={() => abrir('resultado')}>Registrar resultado</button>}
-        {agendada && presidente && !jaAconteceu && <button className="botao secundario" onClick={() => abrir('remarcar')}>Remarcar</button>}
-        {agendada && presidente && <button className="botao secundario" onClick={() => abrir('substituir')}>Suplente assume</button>}
-        {agendada && !jaAconteceu && (presidente || souAluno) && <button className="botao secundario" onClick={() => abrir('convites')}>Convidar pessoas</button>}
-        {agendada && !jaAconteceu && <button className="botao secundario" onClick={() => executar(() => baixar(`/bancas/${b.id}/agenda.ics`, 'defesa-tcc.ics'))}><CalendarPlus className="ic" aria-hidden="true" /> Adicionar à minha agenda</button>}
-        {agendada && (presidente || coordenacao) && <button className="botao secundario perigo-texto" onClick={() => abrir('cancelar')}>Cancelar banca</button>}
-        {b.status === 'REALIZADA' && <Link className="botao secundario" to={`/ata/${b.id}`}>Ver ata da defesa</Link>}
+      <div className="banca-membros">
+        <span className="banca-rotulo">Banca</span>
+        <ul>
+          {(b.membros ?? []).map((m) => (
+            <li key={String(m.usuarioId)}>
+              <span>{m.nome}{m.externo && m.instituicao && !m.nome.includes('(') && ` (${m.instituicao})`}</span>
+              <span className="banca-papel">
+                {agendada && jaAconteceu && m.papel !== 'SUPLENTE' && (m.notaRegistrada
+                  ? <span className="assinou"><Check className="ic" aria-hidden="true" />Nota lançada</span>
+                  : <span className="aguardando"><Clock className="ic" aria-hidden="true" />Nota pendente</span>)}
+                <span className="texto-calmo">{papelNaBanca(m)}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+        {agendada && jaAconteceu && <p className="ajuda">{lancadas} de {avaliadores.length} notas lançadas. As notas só ficam visíveis na ata, depois do resultado.</p>}
+        {agendada && !jaAconteceu && avaliador && <p className="ajuda">As notas poderão ser lançadas depois do horário da defesa.</p>}
       </div>
-    </Cartao>
+
+      {botoes.length > 0 && <footer className="banca-rodape">{botoes}</footer>}
+    </article>
   );
+}
+
+const FUSO = 'America/Manaus';
+/** "Terça-feira, 10/11/2026" */
+const diaSemana = (v: string) => {
+  const d = new Date(v);
+  const semana = d.toLocaleDateString('pt-BR', { weekday: 'long', timeZone: FUSO });
+  return `${semana.charAt(0).toUpperCase()}${semana.slice(1)}, ${d.toLocaleDateString('pt-BR', { timeZone: FUSO })}`;
+};
+const horario = (v: string) => new Date(v).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: FUSO });
+const notaCurta = (n: number | null) => (n == null ? '—' : nota(n).replace(/,?0+$/, '').replace(/,$/, ''));
+const diasAte = (data: string) => {
+  const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: FUSO });
+  return Math.round((Date.parse(data.slice(0, 10)) - Date.parse(hoje)) / 86400000);
+};
+/** "Presidente (orientadora)", "Titular", "Suplente" */
+function papelNaBanca(m: MembroBanca) {
+  if (m.papel === 'PRESIDENTE') return `Presidente (${/^profa\.?\s/i.test(m.nome) ? 'orientadora' : /^prof\.?\s/i.test(m.nome) ? 'orientador' : 'orientador(a)'})`;
+  return m.papel === 'TITULAR' ? 'Titular' : 'Suplente';
 }
 
 function ModalNota({ banca, aoFechar, aoSalvar }: { banca: Banca; aoFechar: () => void; aoSalvar: () => void }) {

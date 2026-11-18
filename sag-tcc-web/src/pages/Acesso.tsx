@@ -77,6 +77,7 @@ export function Login() {
         <Link to="/recuperar-senha">Esqueci minha senha</Link>
         <Link to="/agenda-publica">Ver agenda de defesas</Link>
         <Link to="/verificar">Verificar documento</Link>
+        <Link to="/acervo">Acervo de TCCs</Link>
       </div>
       <p className="acesso-nota">Primeiro acesso? A coordenação do seu curso faz o cadastro e você recebe por e-mail um link para criar sua senha.</p>
 

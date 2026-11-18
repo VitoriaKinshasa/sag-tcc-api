@@ -166,7 +166,7 @@ function EnviarVersao({ tcc, definitiva, versoes, aoEnviar, aoCancelar }: { tcc:
   const [etapa, setEtapa] = useState<Etapa>(definitiva ? 'ENTREGA_DEFINITIVA' : qualificacaoOk ? 'VERSAO_FINAL' : 'QUALIFICACAO');
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [comentario, setComentario] = useState('');
-  const [visibilidade, setVisibilidade] = useState('TEXTO_COMPLETO');
+  const [visibilidade, setVisibilidade] = useState('SOMENTE_METADADOS');
   const [autoria, setAutoria] = useState(false);
   const exigeAutoria = etapa !== 'QUALIFICACAO';
   const [enviando, setEnviando] = useState(false);

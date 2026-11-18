@@ -124,3 +124,5 @@ export class DocumentoPdf {
 /** Tamanhos de página em pontos. */
 export const A4_DEITADO = { largura: 841.89, altura: 595.28 };
 export const A1_EM_PE = { largura: 1683.78, altura: 2383.94 };
+/** Banner de 90 × 120 cm em pé (norma de pôster usada no UC25). */
+export const BANNER_90X120 = { largura: 2551.18, altura: 3401.57 };

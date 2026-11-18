@@ -7,8 +7,13 @@ import { useCarregar } from '../../hooks';
 import type { Area, Curso } from '../../types';
 import { mesmoId } from '../../util';
 
+/**
+ * Administrador: cursos, áreas e regra do NUCOMP.
+ * Coordenação: regras do próprio curso; a regra do NUCOMP e as áreas aparecem só para consulta.
+ */
 export function Cursos() {
   const eu = useUsuario();
+  const admin = eu.perfil === 'ADMINISTRADOR';
   const c = useCarregar(() => Promise.all([api<Curso[]>('GET', '/cursos'), api<Area[]>('GET', '/areas')]), []);
   const [curso, setCurso] = useState({ nome: '', sigla: '' });
   const [area, setArea] = useState('');
@@ -34,19 +39,29 @@ export function Cursos() {
   };
 
   return (
-    <Pagina titulo="Cursos, áreas e regras" descricao="As regras do seu curso, os cursos que usam o SAG-TCC e as áreas do conhecimento usadas para ligar alunos e orientadores.">
+    <Pagina titulo={admin ? 'Cursos e regras' : 'Regras do curso'}
+      descricao={admin ? 'Os cursos que usam o SAG-TCC, as áreas do conhecimento usadas para ligar alunos e orientadores e a regra que vale para todo o NUCOMP.'
+        : 'As regras do seu curso. Os cursos, as áreas e a regra do NUCOMP são definidos pela administração do sistema.'}>
       <Estado c={c}>
-        {([cursos, areas]) => (
+        {([cursos, areas]) => !admin ? (
           <>
-            <RegrasNucleo />
             {cursos.find((x) => mesmoId(x.id, eu.cursoId)) && (
               <RegrasDoCurso curso={cursos.find((x) => mesmoId(x.id, eu.cursoId))!} aoSalvar={c.recarregar} />
             )}
+            <RegrasNucleo editavel={false} />
+            <Cartao titulo="Áreas do conhecimento" descricao="Usadas na proposta do aluno e nas áreas de interesse dos professores. Para incluir uma área, fale com a administração do sistema.">
+              <div className="chips">{areas.map((a) => <span key={a.id} className="chip">{a.nome}</span>)}</div>
+            </Cartao>
+          </>
+        ) : (
+          <>
+            <RegrasNucleo editavel />
             <Cartao titulo="Cursos">
               <Tabela linhas={cursos} chave={(x) => String(x.id)}
                 colunas={[
                   { titulo: 'Curso', valor: (x) => <strong>{x.nome}</strong> },
                   { titulo: 'Sigla', valor: (x) => x.sigla },
+                  { titulo: 'Coordenação', valor: (x) => x.coordenacao ?? <span className="texto-calmo">Sem coordenação</span> },
                   { titulo: 'Situação', valor: (x) => x.ativo ? <Selo cor="verde">Ativo</Selo> : <Selo cor="cinza">Desativado</Selo> },
                   { titulo: '', className: 'col-acoes', valor: (x) => (
                     <div className="acoes">
@@ -114,7 +129,7 @@ function RegrasDoCurso({ curso, aoSalvar }: { curso: Curso; aoSalvar: () => void
 }
 
 /** Regra que vale para o NUCOMP inteiro: os professores orientam alunos de todos os cursos. */
-function RegrasNucleo() {
+function RegrasNucleo({ editavel }: { editavel: boolean }) {
   const c = useCarregar(() => api<{ limiteOrientandos: number }>('GET', '/nucleo/regras'), []);
   const [limite, setLimite] = useState<string | null>(null);
   const { executar } = useFeedback();
@@ -122,7 +137,7 @@ function RegrasNucleo() {
     <Cartao className="regras" titulo="Regra do NUCOMP (todos os cursos)"
       descricao="Os professores do NUCOMP orientam alunos de qualquer curso. O limite abaixo é o TOTAL de orientandos de cada professor, somando SI, EC e LC.">
       <Estado c={c}>
-        {(r) => (
+        {(r) => !editavel ? <p style={{ margin: 0 }}>Limite atual: <strong>{r.limiteOrientandos} orientandos por professor</strong>, somando os três cursos.</p> : (
           <div className="linha-form" style={{ marginTop: 0 }}>
             <Campo rotulo="Orientandos por professor (total)" type="number" min={1} max={30}
               value={limite ?? String(r.limiteOrientandos)} onChange={(e) => setLimite(e.target.value)} />
@@ -134,7 +149,7 @@ function RegrasNucleo() {
           </div>
         )}
       </Estado>
-      <Dica>Essa regra é compartilhada: qualquer coordenação de curso pode alterar.</Dica>
+      <Dica>{editavel ? 'Essa regra vale para todos os cursos. Só a administração do sistema altera.' : 'Definido pela administração do sistema.'}</Dica>
     </Cartao>
   );
 }

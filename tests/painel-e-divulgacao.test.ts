@@ -137,4 +137,29 @@ describe('UC25 – banner', () => {
     const arquivo = await api().get(`/api/tccs/${aluno.tccId}/banner/${gerado.body.id}/pdf`).set(aluno.auth);
     expect(arquivo.status).toBe(200);
   });
+
+  it('aceita só o JPEG (sem PNG) e guarda referências, agradecimentos, coautores e área temática', async () => {
+    const { aluno } = await tccAprovado();
+    const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0]).toString('base64');
+    const conteudo = {
+      titulo: 'Meu TCC', introducao: 'Texto', objetivo: '', metodologia: '', resultados: '', conclusao: '',
+      areaTematica: 'Engenharia de Software', coautores: 'Fulana de Tal', agradecimentos: 'À FAPEAM.',
+      referencias: 'SOMMERVILLE, I. Engenharia de software. 10. ed. São Paulo: Pearson, 2019.',
+    };
+    const gerado = await api().post(`/api/tccs/${aluno.tccId}/banner`).set(aluno.auth).send({ conteudo, jpeg, largura: 300, altura: 400 });
+    expect(gerado.status).toBe(201);
+
+    const imagem = await api().get(`/api/tccs/${aluno.tccId}/banner/${gerado.body.id}/png`).set(aluno.auth);
+    expect(imagem.status).toBe(200);
+    expect(imagem.headers['content-type']).toBe('image/jpeg');
+    expect(imagem.headers['content-disposition']).toContain('banner-tcc.jpg');
+
+    const situacao = await api().get(`/api/tccs/${aluno.tccId}/banner`).set(aluno.auth);
+    expect(situacao.body.ultimo.conteudo.referencias).toContain('SOMMERVILLE');
+    expect(situacao.body.ultimo.conteudo.areaTematica).toBe('Engenharia de Software');
+
+    const longo = await api().post(`/api/tccs/${aluno.tccId}/banner`).set(aluno.auth)
+      .send({ conteudo: { ...conteudo, referencias: 'x'.repeat(1501) }, jpeg, largura: 300, altura: 400 });
+    expect(longo.status).toBe(422);
+  });
 });

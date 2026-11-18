@@ -3,7 +3,7 @@ import { registrarAuditoria, registrarEvento } from '../../shared/auditoria.js';
 import { ErroNegocio, naoEncontrado, proibido } from '../../shared/errors.js';
 import { IaIndisponivel, iaConfigurada, LIMITE_SECAO, SECOES_BANNER, sugerirTextosBanner, type DadosPublicosTcc, type TextosBanner } from '../../shared/ia.js';
 import { notificar } from '../../shared/notificacao.js';
-import { A1_EM_PE, DocumentoPdf } from '../../shared/pdf.js';
+import { BANNER_90X120, DocumentoPdf } from '../../shared/pdf.js';
 import { diaEmManaus, type UsuarioLogadoLike } from '../../shared/util.js';
 
 const APROVADOS = ['APROVADO', 'APROVADO_PUBLICACAO'];
@@ -197,6 +197,10 @@ const ehPng = (b: Buffer) => b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x
 const ehJpeg = (b: Buffer) => b[0] === 0xff && b[1] === 0xd8;
 const LIMITE_IMAGEM = 8 * 1024 * 1024;
 
+/** Partes do banner que o aluno preenche à mão (a IA nunca sugere: referências inventadas seriam um problema). */
+export const CAMPOS_EXTRAS_BANNER = { areaTematica: 150, coautores: 300, agradecimentos: 400, referencias: 1500 } as const;
+export type ConteudoBanner = TextosBanner & Partial<Record<keyof typeof CAMPOS_EXTRAS_BANNER, string>>;
+
 export const bannerService = {
   /** Dados para a tela do banner: dados públicos do TCC, limite do dia e o último banner gerado. */
   async situacao(usuario: UsuarioLogadoLike, tccId: number) {
@@ -235,23 +239,30 @@ export const bannerService = {
     }
   },
 
-  /** P7 e P8 – grava o banner revisado: a imagem PNG (feita na tela) e o PDF tamanho A1 para impressão. */
-  async gerar(usuario: UsuarioLogadoLike, tccId: number, dados: { conteudo: TextosBanner; png: string; jpeg: string; largura: number; altura: number }) {
+  /**
+   * P7 e P8 – grava o banner revisado: a imagem (feita na tela) e o PDF de 90 × 120 cm para impressão.
+   * A imagem chega em JPEG (bem menor que PNG, para caber no limite de envio da hospedagem);
+   * o PNG continua aceito se a tela mandar.
+   */
+  async gerar(usuario: UsuarioLogadoLike, tccId: number, dados: { conteudo: ConteudoBanner; png?: string; jpeg: string; largura: number; altura: number }) {
     await tccDoAlunoAprovado(usuario, tccId);
-    const png = Buffer.from(dados.png.replace(/^data:[^,]*,/, ''), 'base64');
     const jpeg = Buffer.from(dados.jpeg.replace(/^data:[^,]*,/, ''), 'base64');
-    if (!ehPng(png) || !ehJpeg(jpeg)) throw new ErroNegocio(422, 'A imagem do banner não é válida');
-    if (png.length > LIMITE_IMAGEM || jpeg.length > LIMITE_IMAGEM) throw new ErroNegocio(422, 'A imagem do banner ficou grande demais');
-    const conteudo = Object.fromEntries(SECOES_BANNER.map((s) => [s, String(dados.conteudo[s] ?? '').trim().slice(0, LIMITE_SECAO)]));
+    const png = dados.png ? Buffer.from(dados.png.replace(/^data:[^,]*,/, ''), 'base64') : null;
+    if (!ehJpeg(jpeg) || (png && !ehPng(png))) throw new ErroNegocio(422, 'A imagem do banner não é válida');
+    if (jpeg.length > LIMITE_IMAGEM || (png && png.length > LIMITE_IMAGEM)) throw new ErroNegocio(422, 'A imagem do banner ficou grande demais');
+    const conteudo: Record<string, string> = Object.fromEntries(SECOES_BANNER.map((s) => [s, String(dados.conteudo[s] ?? '').trim().slice(0, LIMITE_SECAO)]));
+    for (const [campo, limite] of Object.entries(CAMPOS_EXTRAS_BANNER)) {
+      conteudo[campo] = String(dados.conteudo[campo as keyof ConteudoBanner] ?? '').trim().slice(0, limite);
+    }
     if (!conteudo.titulo) throw new ErroNegocio(422, 'Informe o título do banner');
 
-    const pdf = new DocumentoPdf(A1_EM_PE.largura, A1_EM_PE.altura);
-    pdf.imagem(jpeg, { largura: dados.largura, altura: dados.altura }, 0, 0, A1_EM_PE.largura, A1_EM_PE.altura);
+    const pdf = new DocumentoPdf(BANNER_90X120.largura, BANNER_90X120.altura);
+    pdf.imagem(jpeg, { largura: dados.largura, altura: dados.altura }, 0, 0, BANNER_90X120.largura, BANNER_90X120.altura);
 
     return transacao(async (db) => {
       const { rows } = await db.query(
         'INSERT INTO banner_tcc (tcc_id, conteudo, arquivo_pdf, arquivo_png, gerado_por) VALUES ($1, $2, $3, $4, $5) RETURNING id, gerado_em',
-        [tccId, JSON.stringify(conteudo), pdf.gerar(), png, usuario.id],
+        [tccId, JSON.stringify(conteudo), pdf.gerar(), png ?? jpeg, usuario.id],
       );
       await registrarEvento(db, tccId, 'BANNER_GERADO', 'Banner do TCC gerado', usuario.id);
       return { ...rows[0], mensagem: 'Banner gerado. Use os botões para baixar' };
@@ -267,6 +278,6 @@ export const bannerService = {
     const r = rows[0];
     if (!r) throw naoEncontrado('Banner');
     if (![Number(r.aluno_id), Number(r.orientador_id)].includes(usuario.id)) throw proibido();
-    return tipo === 'pdf' ? r.arquivo_pdf as Buffer : r.arquivo_png as Buffer;
+    return tipo === 'pdf' ? r.arquivo_pdf as Buffer : r.arquivo_png as Buffer; // a imagem pode ser PNG ou JPEG
   },
 };

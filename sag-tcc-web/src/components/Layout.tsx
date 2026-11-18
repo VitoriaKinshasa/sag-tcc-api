@@ -87,6 +87,7 @@ export function Layout() {
 
       <footer className="rodape">
         Universidade do Estado do Amazonas · Escola Superior de Tecnologia · SAG-TCC
+        <span className="rodape-links"><Link to="/acervo">Acervo de TCCs</Link><Link to="/agenda-publica">Agenda pública</Link></span>
       </footer>
 
       {termoPendente && <TermoDeUso />}
