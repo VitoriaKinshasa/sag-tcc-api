@@ -9,7 +9,7 @@ afterAll(() => pool.end());
 beforeAll(() => calendarioComDefesaAberta());
 
 const PDF = Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF').toString('base64');
-const versao = (etapa = 'QUALIFICACAO', extra = {}) => ({ etapa, arquivoNome: 'tcc.pdf', arquivoBase64: PDF, comentario: 'Capítulos 1 e 2', ...extra });
+const versao = (etapa = 'QUALIFICACAO', extra = {}) => ({ etapa, arquivoNome: 'tcc.pdf', arquivoBase64: PDF, comentario: 'Capítulos 1 e 2', declaracaoAutoria: true, ...extra });
 const semestre = (dia: string) => `${dia.slice(0, 4)}.${Number(dia.slice(5, 7)) <= 6 ? 1 : 2}`;
 
 describe('Versões do TCC (RF14)', () => {

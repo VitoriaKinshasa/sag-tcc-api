@@ -865,7 +865,7 @@ function cartaoEnviarVersao(tcc, definitiva) {
       if (!f) return aviso('Escolha o arquivo PDF.', 'erro');
       if (f.size > 10 * 1024 * 1024) return aviso('O arquivo deve ter no máximo 10 MB.', 'erro');
       e.target.disabled = true;
-      const r = await api('POST', `/tccs/${tcc.id}/versoes`, { etapa: etapa.value, arquivoNome: f.name, arquivoBase64: await lerArquivo(f), comentario: comentario.value || null,
+      const r = await api('POST', `/tccs/${tcc.id}/versoes`, { etapa: etapa.value, arquivoNome: f.name, arquivoBase64: await lerArquivo(f), comentario: comentario.value || null, declaracaoAutoria: true, // na tela de testes a declaração de autoria vai marcada
         ...(definitiva ? { visibilidade: visibilidade.value } : {}) });
       e.target.disabled = false;
       if (r) { aviso(`Versão ${r.numero} enviada${r.fora_do_prazo ? ' (fora do prazo)' : ''}. O orientador foi avisado.`); recarregar(); }

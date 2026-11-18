@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { autenticar, exigirPerfil } from '../../shared/middlewares.js';
+import { pool } from '../../shared/db.js';
 import { usuarioDe } from '../../shared/util.js';
 import { orientacaoService } from './orientacao.service.js';
 
@@ -32,24 +33,45 @@ orientacaoRoutes.post('/solicitacoes', exigirPerfil('ALUNO'), async (req, res) =
   res.status(201).json(await orientacaoService.solicitar(usuarioDe(req).id, solicitarSchema.parse(req.body).professorId));
 });
 
+// Aluno: todos os pedidos que ele já fez (orientação, troca, publicação e desistência), do mais novo para o mais antigo
+orientacaoRoutes.get('/meus-pedidos', exigirPerfil('ALUNO'), async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT * FROM (
+       SELECT 'ORIENTACAO' AS tipo, s.id, s.status::text AS status, s.criado_em, s.respondido_em AS decidido_em, s.justificativa, u.nome AS detalhe
+         FROM solicitacao_orientacao s JOIN tcc t ON t.id = s.tcc_id JOIN usuario u ON u.id = s.professor_id WHERE t.aluno_id = $1
+       UNION ALL
+       SELECT 'TROCA', x.id, x.status::text, x.criado_em, x.decidido_em, x.justificativa_decisao, u.nome
+         FROM solicitacao_troca x JOIN tcc t ON t.id = x.tcc_id JOIN usuario u ON u.id = x.novo_orientador_id WHERE t.aluno_id = $1
+       UNION ALL
+       SELECT 'PUBLICACAO', p.id, p.status::text, p.criado_em, p.decidido_em, p.justificativa, p.titulo_artigo
+         FROM pedido_publicacao p JOIN tcc t ON t.id = p.tcc_id WHERE t.aluno_id = $1
+       UNION ALL
+       SELECT 'DESISTENCIA', d.id, d.status::text, d.criado_em, d.decidido_em, NULL, NULL
+         FROM pedido_desistencia d JOIN tcc t ON t.id = d.tcc_id WHERE t.aluno_id = $1
+     ) p ORDER BY criado_em DESC`,
+    [usuarioDe(req).id],
+  );
+  res.json(rows);
+});
+
 // UC08 – professor vê e responde as solicitações
-orientacaoRoutes.get('/solicitacoes/recebidas', exigirPerfil('ORIENTADOR'), async (req, res) => {
+orientacaoRoutes.get('/solicitacoes/recebidas', exigirPerfil('ORIENTADOR', 'COORDENACAO'), async (req, res) => {
   res.json(await orientacaoService.solicitacoesRecebidas(usuarioDe(req).id));
 });
-orientacaoRoutes.patch('/solicitacoes/:id', exigirPerfil('ORIENTADOR'), async (req, res) => {
+orientacaoRoutes.patch('/solicitacoes/:id', exigirPerfil('ORIENTADOR', 'COORDENACAO'), async (req, res) => {
   res.json(await orientacaoService.responder(usuarioDe(req).id, Number(req.params.id), responderSchema.parse(req.body)));
 });
 
 // Orientandos do professor (TCCs em andamento que ele orienta ou coorienta)
-orientacaoRoutes.get('/orientandos', exigirPerfil('ORIENTADOR'), async (req, res) => {
+orientacaoRoutes.get('/orientandos', exigirPerfil('ORIENTADOR', 'COORDENACAO'), async (req, res) => {
   res.json(await orientacaoService.meusOrientandos(usuarioDe(req).id));
 });
 
 // UC09 – reunião de alinhamento e encontros
-orientacaoRoutes.post('/tccs/:tccId/reunioes', exigirPerfil('ORIENTADOR'), async (req, res) => {
+orientacaoRoutes.post('/tccs/:tccId/reunioes', exigirPerfil('ORIENTADOR', 'COORDENACAO'), async (req, res) => {
   res.status(201).json(await orientacaoService.agendarReuniao(usuarioDe(req).id, Number(req.params.tccId), reuniaoSchema.parse(req.body)));
 });
-orientacaoRoutes.post('/tccs/:tccId/encontros', exigirPerfil('ORIENTADOR'), async (req, res) => {
+orientacaoRoutes.post('/tccs/:tccId/encontros', exigirPerfil('ORIENTADOR', 'COORDENACAO'), async (req, res) => {
   res.status(201).json(await orientacaoService.registrarEncontro(usuarioDe(req).id, Number(req.params.tccId), encontroSchema.parse(req.body)));
 });
 

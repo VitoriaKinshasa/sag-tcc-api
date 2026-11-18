@@ -8,8 +8,13 @@ export interface Membro { usuario_id: number; papel: Papel; nome: string; email:
 
 /** Campos que as telas usam para mostrar uma banca. */
 const DETALHE = `
-  SELECT b.id, b.tcc_id, b.data_hora, b.local_ou_link, b.status,
-         t.titulo, t.subtitulo, t.situacao, t.curso_id, c.sigla AS curso, c.nome AS curso_nome, al.id AS aluno_id, al.nome AS aluno,
+  SELECT b.id, b.tcc_id, b.data_hora, b.local_ou_link, b.status, b.motivo_cancelamento, b.codigo_verificacao,
+         b.ata_digitalizada_nome, b.ata_digitalizada_em,
+         t.titulo, t.subtitulo, t.situacao, t.curso_id, t.correcoes_pendentes, t.prazo_correcoes,
+         c.sigla AS curso, c.nome AS curso_nome, c.nota_minima, c.dias_correcoes, c.notas_individuais_aluno,
+         al.id AS aluno_id, al.nome AS aluno,
+         (SELECT json_build_object('id', v.id, 'numero', v.numero, 'arquivoNome', v.arquivo_nome, 'enviadoEm', v.enviado_em)
+          FROM versao_tcc v WHERE v.tcc_id = t.id AND v.etapa = 'VERSAO_FINAL' ORDER BY v.numero DESC LIMIT 1) AS versao_final,
          (SELECT json_agg(json_build_object('usuarioId', m.usuario_id, 'nome', u.nome, 'papel', m.papel,
                  'externo', u.externo, 'instituicao', u.instituicao, 'notaRegistrada', n.membro_id IS NOT NULL)
                  ORDER BY m.papel, u.nome)
@@ -43,10 +48,10 @@ export const bancasRepository = {
     return rows[0];
   },
 
-  /** Bancas em que o usuário participa (como membro ou como aluno); a coordenação vê as do seu curso. */
+  /** Bancas em que o usuário participa (como membro ou como aluno); a coordenação vê também todas as do seu curso. */
   async doUsuario(db: Db, usuario: { id: number; perfil: string; cursoId: number | null }) {
     const filtro = usuario.perfil === 'COORDENACAO'
-      ? 't.curso_id = $2::bigint'
+      ? '(t.curso_id = $2::bigint OR EXISTS (SELECT 1 FROM banca_membro x WHERE x.banca_id = b.id AND x.usuario_id = $1))'
       : '(EXISTS (SELECT 1 FROM banca_membro x WHERE x.banca_id = b.id AND x.usuario_id = $1) OR t.aluno_id = $1) AND $2::bigint IS NOT DISTINCT FROM $2';
     const { rows } = await db.query(
       `SELECT * FROM (${DETALHE} WHERE ${filtro}) d
@@ -60,7 +65,7 @@ export const bancasRepository = {
   async membrosDisponiveis(db: Db) {
     const { rows } = await db.query(
       `SELECT id, nome, perfil, externo, instituicao, titulacao FROM usuario
-       WHERE perfil IN ('ORIENTADOR', 'MEMBRO_BANCA') AND ativo ORDER BY externo, nome`,
+       WHERE perfil IN ('ORIENTADOR', 'MEMBRO_BANCA', 'COORDENACAO') AND ativo ORDER BY externo, nome`,
     );
     return rows;
   },
@@ -105,6 +110,17 @@ export const bancasRepository = {
   },
   async mudarStatus(db: Db, id: number, status: 'REALIZADA' | 'CANCELADA') {
     await db.query('UPDATE banca SET status = $2 WHERE id = $1', [id, status]);
+  },
+
+  /** Assinaturas eletrônicas da ata, com o hash do conteúdo assinado. */
+  async assinaturas(db: Db, bancaId: number) {
+    const { rows } = await db.query(
+      `SELECT a.usuario_id, u.nome, m.papel, a.hash_conteudo, a.assinado_em
+       FROM ata_assinatura a JOIN banca_membro m ON m.banca_id = a.banca_id AND m.usuario_id = a.usuario_id
+       JOIN usuario u ON u.id = a.usuario_id WHERE a.banca_id = $1 ORDER BY m.papel, u.nome`,
+      [bancaId],
+    );
+    return rows as { usuario_id: number; nome: string; papel: Papel; hash_conteudo: string; assinado_em: Date }[];
   },
 
   async notas(db: Db, bancaId: number) {
@@ -153,8 +169,8 @@ export const bancasRepository = {
   /** Usado pelo UC17: quando o TCC deixa de estar apto à defesa, a banca agendada é cancelada e os membros avisados. */
   async cancelarAgendadas(db: Db, tccId: number, motivo: string) {
     const { rows } = await db.query(
-      "UPDATE banca SET status = 'CANCELADA' WHERE tcc_id = $1 AND status = 'AGENDADA' RETURNING id, data_hora",
-      [tccId],
+      "UPDATE banca SET status = 'CANCELADA', motivo_cancelamento = $2 WHERE tcc_id = $1 AND status = 'AGENDADA' RETURNING id, data_hora",
+      [tccId, motivo],
     );
     for (const b of rows) {
       for (const m of await this.membros(db, Number(b.id))) {

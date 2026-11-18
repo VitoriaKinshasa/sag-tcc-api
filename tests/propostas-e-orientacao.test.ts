@@ -89,16 +89,43 @@ describe('UC07 e UC08 – Solicitar e responder orientação (RF07–RF09)', () 
     expect(res.status).toBe(403);
   });
 
-  it('RD05 – professor no limite de orientandos não pode aceitar novos', async () => {
-    const { rows } = await pool.query("INSERT INTO curso (nome, sigla, limite_orientandos) VALUES ('Curso Limite', 'LIM', 1) RETURNING id");
-    const prof = await novoUsuarioLogado('ORIENTADOR', { cursoId: Number(rows[0].id) });
-    await alunoOrientado(prof); // ocupa a única vaga
-    const aluno2 = await alunoComProposta();
+  it('RD05 – professor no limite TOTAL de orientandos (todos os cursos) não pode aceitar novos', async () => {
+    await pool.query("UPDATE regra_nucleo SET valor = 1 WHERE chave = 'limite_orientandos'");
+    const prof = await novoUsuarioLogado('ORIENTADOR');
+    await alunoOrientado(prof); // ocupa a única vaga (aluno de EC)
+    const aluno2 = await novoUsuarioLogado('ALUNO', { cursoId: 2 }); // aluno de outro curso também conta
+    await api().post('/api/tccs').set(aluno2.auth).send({ titulo: 'TCC de SI', resumo: 'Resumo do TCC de SI.', areaId: 1 });
     const res = await api().post('/api/orientacao/solicitacoes').set(aluno2.auth).send({ professorId: prof.id });
     expect(res.status).toBe(422);
     expect(res.body.regra).toBe('RD05');
     const lista = await api().get('/api/orientacao/orientadores').set(aluno2.auth);
     expect(lista.body.find((p: { id: number }) => p.id === prof.id).disponivel).toBe(false);
+    await pool.query("UPDATE regra_nucleo SET valor = 5 WHERE chave = 'limite_orientandos'");
+  });
+
+  it('a coordenação também orienta: aparece na lista de orientadores e aceita pedidos', async () => {
+    const coord = await novoUsuarioLogado('COORDENACAO', { cursoId: 1 });
+    const aluno = await alunoComProposta();
+    const lista = await api().get('/api/orientacao/orientadores').set(aluno.auth);
+    expect(lista.body.some((p: { id: number }) => p.id === coord.id)).toBe(true);
+    const sol = await api().post('/api/orientacao/solicitacoes').set(aluno.auth).send({ professorId: coord.id });
+    expect(sol.status).toBe(201);
+    const aceite = await api().patch(`/api/orientacao/solicitacoes/${sol.body.id}`).set(coord.auth).send({ aceitar: true });
+    expect(aceite.status).toBe(200);
+    const orientandos = await api().get('/api/orientacao/orientandos').set(coord.auth);
+    expect(orientandos.body.some((t: { id: number }) => t.id === aluno.tccId)).toBe(true);
+  });
+
+  it('regra do NUCOMP: todos veem; só o administrador altera o limite total de orientandos', async () => {
+    const coord = await novoUsuarioLogado('COORDENACAO', { cursoId: 2 });
+    const admin = await novoUsuarioLogado('ADMINISTRADOR');
+    const aluno = await novoUsuarioLogado('ALUNO');
+    expect((await api().get('/api/nucleo/regras').set(aluno.auth)).body.limiteOrientandos).toBe(5);
+    expect((await api().put('/api/nucleo/regras').set(aluno.auth).send({ limiteOrientandos: 8 })).status).toBe(403);
+    expect((await api().put('/api/nucleo/regras').set(coord.auth).send({ limiteOrientandos: 8 })).status).toBe(403);
+    const ok = await api().put('/api/nucleo/regras').set(admin.auth).send({ limiteOrientandos: 8 });
+    expect(ok.body.limiteOrientandos).toBe(8);
+    await api().put('/api/nucleo/regras').set(admin.auth).send({ limiteOrientandos: 5 });
   });
 });
 
@@ -223,10 +250,16 @@ describe('Consultas usadas pela tela de testes', () => {
     expect(res.body.map((p: { id: number }) => Number(p.id))).toContain(Number(pedido.body.id));
   });
 
-  it('a API entrega a tela de testes no endereço principal', async () => {
+  it('a API entrega o sistema no endereço principal e a tela de testes em /teste', async () => {
     const res = await api().get('/');
     expect(res.status).toBe(200);
     expect(res.text).toContain('SAG-TCC');
+    const teste = await api().get('/teste/');
+    expect(teste.status).toBe(200);
+    expect(teste.text).toContain('Tela de testes');
+    const rotaInexistente = await api().get('/api/nao-existe');
+    expect(rotaInexistente.status).not.toBe(200); // endereços da API nunca devolvem a página do sistema
+    expect(rotaInexistente.headers['content-type']).toContain('application/json');
   });
 });
 

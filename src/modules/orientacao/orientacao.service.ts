@@ -9,11 +9,11 @@ import { orientacaoRepository as repo } from './orientacao.repository.js';
 
 /**
  * RD02 – o orientador deve ser professor ativo do NUCOMP (não externo).
- * RD05 – o professor não pode passar do limite de orientandos do curso.
+ * RD05 – o professor não pode passar do limite de orientandos do NUCOMP (total, somando todos os cursos).
  */
 async function garantirOrientadorDisponivel(db: PoolClient, professorId: number) {
   const professor = await repo.buscarProfessorComCarga(db, professorId);
-  if (!professor || professor.perfil !== 'ORIENTADOR' || !professor.ativo || professor.externo) {
+  if (!professor || !['ORIENTADOR', 'COORDENACAO'].includes(professor.perfil) || !professor.ativo || professor.externo) {
     throw new ErroNegocio(422, 'O orientador deve ser um professor ativo do NUCOMP', 'RD02');
   }
   if (professor.orientandos >= professor.limite) {
@@ -82,7 +82,7 @@ export const orientacaoService = {
       if (coorientadorId) {
         if (coorientadorId === professorId) throw new ErroNegocio(422, 'O coorientador deve ser diferente do orientador', 'RD03');
         const { rows } = await db.query(
-          "SELECT 1 FROM usuario WHERE id = $1 AND ativo AND (perfil = 'ORIENTADOR' OR externo)", [coorientadorId]);
+          "SELECT 1 FROM usuario WHERE id = $1 AND ativo AND (perfil IN ('ORIENTADOR', 'COORDENACAO') OR externo)", [coorientadorId]);
         if (!rows[0]) throw new ErroNegocio(422, 'Coorientador inválido', 'RD03');
       }
 

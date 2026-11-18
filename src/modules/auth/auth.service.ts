@@ -42,6 +42,8 @@ export const authService = {
     }
 
     await usuariosRepository.zerarTentativas(pool, usuario.id);
+    // Guarda o acesso anterior para mostrar na tela "Meus dados"
+    await pool.query('UPDATE usuario SET acesso_anterior_em = ultimo_acesso_em, ultimo_acesso_em = now() WHERE id = $1', [usuario.id]);
     const token = jwt.sign(
       { perfil: usuario.perfil, cursoId: usuario.curso_id },
       env.JWT_SECRET,
@@ -88,6 +90,19 @@ export const authService = {
       await db.query('UPDATE token_acesso SET usado_em = now() WHERE id = $1', [rows[0].id]);
       return { mensagem: 'Senha definida com sucesso' };
     });
+  },
+
+  /** Alterar a senha estando logado (tela "Meus dados"): pede a senha atual. */
+  async alterarSenha(usuarioId: number, senhaAtual: string, novaSenha: string) {
+    const usuario = await usuariosRepository.buscarPorId(pool, usuarioId);
+    if (!usuario?.senha_hash) throw new ErroNegocio(422, 'Defina sua senha pelo link de primeiro acesso');
+    // 422 (e não 401) para a tela não entender como "sessão expirada"
+    if (!(await bcrypt.compare(senhaAtual, usuario.senha_hash))) throw new ErroNegocio(422, 'A senha atual está incorreta');
+    if (senhaAtual === novaSenha) throw new ErroNegocio(422, 'A nova senha deve ser diferente da atual');
+    await usuariosRepository.definirSenha(pool, usuarioId, await bcrypt.hash(novaSenha, 10)); // RNF03
+    await emailService.enviar(usuario.email, '[SAG-TCC] Sua senha foi alterada',
+      'A senha da sua conta no SAG-TCC acabou de ser alterada. Se não foi você, use "Esqueci minha senha" e avise a coordenação.');
+    return { mensagem: 'Senha alterada com sucesso' };
   },
 
   /** RNF15 – aceite do termo de uso de dados no primeiro acesso. */

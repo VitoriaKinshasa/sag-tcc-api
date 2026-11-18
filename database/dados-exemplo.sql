@@ -56,3 +56,9 @@ INSERT INTO usuario (nome, email, senha_hash, perfil, curso_id, matricula, exter
 VALUES ('Dr. Rafael Costa (membro externo)', 'rcosta.externo@exemplo.com',
         '$2b$10$v4JxVsvCccxSv2GnSJkhNOXRZxjY2RCH0BZir5TyzGJq/pTvnmM0K',
         'MEMBRO_BANCA', NULL, NULL, TRUE, 'UFAM', 'Doutor', now());
+
+-- Administrador do sistema (perfil ADMINISTRADOR): cadastra cursos, coordenações e professores.
+-- Num sistema novo, o primeiro administrador é criado com o comando: npm run criar-admin
+INSERT INTO usuario (nome, email, senha_hash, perfil, termo_aceito_em)
+VALUES ('Administração do NUCOMP', 'admin.nucomp@exemplo.com',
+        '$2b$10$v4JxVsvCccxSv2GnSJkhNOXRZxjY2RCH0BZir5TyzGJq/pTvnmM0K', 'ADMINISTRADOR', now());

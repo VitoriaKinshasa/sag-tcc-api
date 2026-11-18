@@ -15,9 +15,18 @@ const cliente = new pg.Client({ connectionString: url });
 await cliente.connect();
 await cliente.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
 await cliente.query(ler('schema.sql'));
+await cliente.query(ler('atualizacoes.sql'));
 await cliente.query(ler('dados-exemplo.sql'));
 if (comCenarios) await cliente.query(ler('cenarios-exemplo.sql'));
+await cliente.query(ler('atualizacoes.sql')); // de novo no fim: professores ficam sem curso (são do NUCOMP)
 await cliente.end();
 console.log(comCenarios
-  ? 'Banco recriado com usuários e cenários prontos (senha de todos: Senha@123).'
+  ? [
+    'Banco recriado com usuários e cenários prontos (senha de todos: Senha@123).',
+    '  - Carla (SI): defesa já realizada, aprovada com correções. Ata esperando assinatura de Elloa, Fábio e Rafael.',
+    '    Código da ata: SAG-DEMO-ATA1. Declarações e folha de aprovação já disponíveis.',
+    '  - Gabriel (EC): defesa foi ontem, falta lançar as notas (Polianny, Tiago, Rafael) e o resultado.',
+    '  - Karen (LC): defesa daqui a 7 dias.   - Helena (EC): apta à defesa, sem banca (Prof. Tiago cadastra).',
+    '  - Lucas (LC): TCC atrasado.            - Diego (SI): ainda sem TCC (para testar a proposta).',
+  ].join('\n')
   : 'Banco recriado LIMPO: só os usuários (senha de todos: Senha@123). Nenhum TCC, calendário ou banca.');

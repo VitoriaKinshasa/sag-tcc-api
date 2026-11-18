@@ -3,7 +3,7 @@
 -- =====================================================================
 
 -- ---------- Tipos enumerados ----------
-CREATE TYPE perfil_usuario     AS ENUM ('COORDENACAO', 'ORIENTADOR', 'ALUNO', 'MEMBRO_BANCA');
+CREATE TYPE perfil_usuario     AS ENUM ('COORDENACAO', 'ORIENTADOR', 'ALUNO', 'MEMBRO_BANCA', 'ADMINISTRADOR');
 CREATE TYPE situacao_tcc       AS ENUM ('EM_PROPOSTA', 'EM_DESENVOLVIMENTO', 'APTO_DEFESA', 'APROVADO',
                                         'APROVADO_PUBLICACAO', 'NAO_APRESENTADO', 'REPROVADO', 'CANCELADO');
 CREATE TYPE visibilidade_tcc   AS ENUM ('TEXTO_COMPLETO', 'SOMENTE_METADADOS');

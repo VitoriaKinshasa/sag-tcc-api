@@ -9,14 +9,15 @@ const hashSenha = bcrypt.hashSync(SENHA, 4);
 let contador = 0;
 
 /** Cria um usuário direto no banco (com senha definida) e devolve o id. */
-export type PerfilTeste = 'COORDENACAO' | 'ORIENTADOR' | 'ALUNO' | 'MEMBRO_BANCA';
+export type PerfilTeste = 'COORDENACAO' | 'ORIENTADOR' | 'ALUNO' | 'MEMBRO_BANCA' | 'ADMINISTRADOR';
 export async function criarUsuario(perfil: PerfilTeste, extra: { cursoId?: number; externo?: boolean } = {}) {
   contador += 1;
   const email = `${perfil.toLowerCase()}${contador}-${Date.now()}@uea.edu.br`;
   const { rows } = await pool.query(
     `INSERT INTO usuario (nome, email, senha_hash, perfil, curso_id, matricula, externo, instituicao)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-    [`${perfil} ${contador}`, email, hashSenha, perfil, extra.externo ? null : (extra.cursoId ?? 1),
+    // Professores, membros de banca e administradores não têm curso; alunos e coordenação têm curso
+    [`${perfil} ${contador}`, email, hashSenha, perfil, extra.externo || ['ORIENTADOR', 'MEMBRO_BANCA', 'ADMINISTRADOR'].includes(perfil) ? null : (extra.cursoId ?? 1),
      perfil === 'ALUNO' ? `M${Date.now()}${contador}` : null, extra.externo ?? false, extra.externo ? 'Outra Universidade' : null],
   );
   return { id: Number(rows[0].id), email };

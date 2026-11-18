@@ -5,6 +5,9 @@ export interface Tcc {
   id: number; aluno_id: number; curso_id: number; area_id: number; titulo: string; subtitulo: string | null;
   resumo: string; orientador_id: number | null; coorientador_id: number | null; situacao: string;
   justificativa_situacao: string | null; visibilidade: string;
+  atrasado?: boolean; criado_em?: Date;
+  /** Aprovado com correções: prazo para a entrega definitiva corrigida (TP3). */
+  correcoes_pendentes?: boolean; prazo_correcoes?: string | null; concluido_em?: Date | null;
 }
 
 export const tccRepository = {

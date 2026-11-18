@@ -5,7 +5,12 @@ import { registrarAuditoria } from '../../shared/auditoria.js';
 /** UC04 – Manter cursos e áreas (CRUD) (RF32). */
 export const cursosService = {
   async listarCursos() {
-    const { rows } = await pool.query('SELECT * FROM curso ORDER BY nome');
+    // coordenação atual de cada curso (quem tem perfil de coordenação ativo naquele curso)
+    const { rows } = await pool.query(
+      `SELECT c.*, (SELECT string_agg(u.nome, ', ' ORDER BY u.nome) FROM usuario u
+                   WHERE u.curso_id = c.id AND u.perfil = 'COORDENACAO' AND u.ativo) AS coordenacao
+       FROM curso c ORDER BY c.nome`,
+    );
     return rows;
   },
 
@@ -32,6 +37,42 @@ export const cursosService = {
         [id, dados.nome, dados.limiteOrientandos, dados.coordenadorId ?? atual[0].coordenador_id],
       );
       await registrarAuditoria(db, { usuarioId: coordenadorId, tabela: 'curso', registroId: id, operacao: 'UPDATE', anterior: atual[0], novo: rows[0] });
+      return rows[0];
+    });
+  },
+
+  /** Regras do NUCOMP (valem para todos os cursos): limite TOTAL de orientandos por professor (RD05). */
+  async regrasNucleo() {
+    const { rows } = await pool.query("SELECT valor FROM regra_nucleo WHERE chave = 'limite_orientandos'");
+    return { limiteOrientandos: Number(rows[0]?.valor ?? 5) };
+  },
+
+  async editarRegrasNucleo(coordenacao: { id: number }, r: { limiteOrientandos: number }) {
+    const anterior = await this.regrasNucleo();
+    await transacao(async (db) => {
+      await db.query(
+        `INSERT INTO regra_nucleo (chave, valor) VALUES ('limite_orientandos', $1)
+         ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor, atualizado_em = now()`, [r.limiteOrientandos],
+      );
+      await registrarAuditoria(db, { usuarioId: coordenacao.id, tabela: 'regra_nucleo', registroId: 1, operacao: 'UPDATE', anterior, novo: r });
+    });
+    return r;
+  },
+
+  /** Regras do curso (só a coordenação do próprio curso): banca, nota mínima, prazo de correções e privacidade das notas. */
+  async editarRegras(coordenacao: { id: number; cursoId: number | null }, id: number, r: {
+    notaMinima: number; minTitulares: number; minSuplentes: number; diasCorrecoes: number; notasIndividuaisAluno: boolean;
+  }) {
+    if (coordenacao.cursoId !== id) throw new ErroNegocio(403, 'Você só pode alterar as regras do seu curso');
+    const { rows: atual } = await pool.query('SELECT * FROM curso WHERE id = $1', [id]);
+    if (!atual[0]) throw naoEncontrado('Curso');
+    return transacao(async (db) => {
+      const { rows } = await db.query(
+        `UPDATE curso SET nota_minima = $2, min_titulares = $3, min_suplentes = $4,
+                dias_correcoes = $5, notas_individuais_aluno = $6 WHERE id = $1 RETURNING *`,
+        [id, r.notaMinima, r.minTitulares, r.minSuplentes, r.diasCorrecoes, r.notasIndividuaisAluno],
+      );
+      await registrarAuditoria(db, { usuarioId: coordenacao.id, tabela: 'curso', registroId: id, operacao: 'UPDATE', anterior: atual[0], novo: rows[0] });
       return rows[0];
     });
   },

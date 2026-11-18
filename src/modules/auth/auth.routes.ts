@@ -31,6 +31,15 @@ authRoutes.post('/definir-senha', async (req, res) => {
   res.json(await authService.definirSenha(token, novaSenha));
 });
 
+const alterarSenhaSchema = z.object({
+  senhaAtual: z.string({ required_error: 'Informe a senha atual' }).min(1, 'Informe a senha atual'),
+  novaSenha: z.string({ required_error: 'Informe a nova senha' }).min(8, 'A nova senha deve ter pelo menos 8 caracteres'),
+});
+authRoutes.post('/alterar-senha', autenticar, async (req, res) => {
+  const { senhaAtual, novaSenha } = alterarSenhaSchema.parse(req.body);
+  res.json(await authService.alterarSenha(usuarioDe(req).id, senhaAtual, novaSenha));
+});
+
 authRoutes.post('/aceitar-termo', autenticar, async (req, res) => {
   res.json(await authService.aceitarTermo(usuarioDe(req).id));
 });

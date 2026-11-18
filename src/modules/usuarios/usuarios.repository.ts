@@ -22,10 +22,12 @@ export const usuariosRepository = {
     const { rows } = await db.query(`SELECT ${COLUNAS_PUBLICAS} FROM usuario WHERE id = $1`, [id]);
     return rows[0];
   },
+  /** Lista usuários. Com cursoId: alunos e coordenação daquele curso, mais todos os professores do NUCOMP e membros externos. */
   async listar(db: Db, filtro: { perfil?: string; cursoId?: number }) {
     const { rows } = await db.query(
       `SELECT ${COLUNAS_PUBLICAS} FROM usuario
-       WHERE ($1::perfil_usuario IS NULL OR perfil = $1) AND ($2::bigint IS NULL OR curso_id = $2)
+       WHERE ($1::perfil_usuario IS NULL OR perfil = $1)
+         AND ($2::bigint IS NULL OR curso_id = $2 OR perfil IN ('ORIENTADOR', 'MEMBRO_BANCA') OR externo)
        ORDER BY nome`,
       [filtro.perfil ?? null, filtro.cursoId ?? null],
     );

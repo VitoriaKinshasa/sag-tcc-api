@@ -10,5 +10,6 @@ export default async function () {
   await cliente.connect();
   await cliente.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
   await cliente.query(fs.readFileSync(new URL('../database/schema.sql', import.meta.url), 'utf8'));
+  await cliente.query(fs.readFileSync(new URL('../database/atualizacoes.sql', import.meta.url), 'utf8'));
   await cliente.end();
 }

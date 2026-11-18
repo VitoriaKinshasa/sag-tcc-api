@@ -24,7 +24,19 @@ const resultadoSchema = z.object({
   resultado: z.enum(['APROVADO', 'APROVADO_COM_CORRECOES', 'REPROVADO'], { errorMap: () => ({ message: 'Resultado inválido' }) }),
   observacao: z.string().nullish(),
   ataUrl: z.string().trim().url('Link da ata inválido').nullish().or(z.literal('')),
+  prazoCorrecoes: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data do prazo inválida').nullish().or(z.literal('')),
 });
+const assinarSchema = z.object({ senha: z.string({ required_error: 'Digite a sua senha' }).min(1, 'Digite a sua senha') });
+const pdfSchema = z.object({
+  arquivoNome: z.string({ required_error: 'Escolha o arquivo PDF' }).trim().min(1, 'Escolha o arquivo PDF').max(200),
+  arquivoBase64: z.string({ required_error: 'Escolha o arquivo PDF' }).min(1, 'Escolha o arquivo PDF'),
+});
+const correcaoNotaSchema = z.object({
+  nota: z.number({ required_error: 'Informe a nota', invalid_type_error: 'Informe a nota' }).min(0, 'A nota vai de 0 a 10').max(10, 'A nota vai de 0 a 10'),
+  justificativa: z.string({ required_error: 'Informe a justificativa da correção' }).trim().min(5, 'Informe a justificativa da correção').max(1000),
+});
+const substituirSchema = z.object({ titularId: id, suplenteId: id });
+const cancelarSchema = z.object({ motivo: z.string({ required_error: 'Informe o motivo' }).trim().min(5, 'Informe o motivo do cancelamento').max(1000) });
 const convitesSchema = z.object({
   emails: z.array(z.string().trim().email('E-mail inválido'), { required_error: 'Informe os e-mails' })
     .min(1, 'Informe pelo menos um e-mail').max(20, 'Envie no máximo 20 convites por vez'),
@@ -58,25 +70,55 @@ bancasRoutes.get('/:id', async (req, res) => {
 });
 
 // UC19 – Cadastrar e remarcar banca (orientador = presidente)
-bancasRoutes.post('/', exigirPerfil('ORIENTADOR'), async (req, res) => {
+bancasRoutes.post('/', exigirPerfil('ORIENTADOR', 'COORDENACAO'), async (req, res) => {
   res.status(201).json(await bancasService.cadastrar(usuarioDe(req).id, bancaSchema.parse(req.body)));
 });
-bancasRoutes.patch('/:id/remarcar', exigirPerfil('ORIENTADOR'), async (req, res) => {
+bancasRoutes.patch('/:id/remarcar', exigirPerfil('ORIENTADOR', 'COORDENACAO'), async (req, res) => {
   res.json(await bancasService.remarcar(usuarioDe(req).id, Number(req.params.id), remarcarSchema.parse(req.body)));
 });
 
 // UC20 – Notas, resultado e ata
-bancasRoutes.post('/:id/notas', exigirPerfil('ORIENTADOR', 'MEMBRO_BANCA'), async (req, res) => {
+bancasRoutes.post('/:id/notas', exigirPerfil('ORIENTADOR', 'MEMBRO_BANCA', 'COORDENACAO'), async (req, res) => {
   res.status(201).json(await bancasService.registrarNota(usuarioDe(req).id, Number(req.params.id), notaSchema.parse(req.body)));
 });
-bancasRoutes.post('/:id/resultado', exigirPerfil('ORIENTADOR'), async (req, res) => {
+bancasRoutes.post('/:id/resultado', exigirPerfil('ORIENTADOR', 'COORDENACAO'), async (req, res) => {
   res.status(201).json(await bancasService.registrarResultado(usuarioDe(req).id, Number(req.params.id), resultadoSchema.parse(req.body)));
 });
 bancasRoutes.get('/:id/ata', async (req, res) => {
   res.json(await bancasService.ata(usuarioDe(req), Number(req.params.id)));
 });
+bancasRoutes.post('/:id/ata/assinar', exigirPerfil('ORIENTADOR', 'MEMBRO_BANCA', 'COORDENACAO'), async (req, res) => {
+  res.json(await bancasService.assinarAta(usuarioDe(req).id, Number(req.params.id), assinarSchema.parse(req.body).senha));
+});
+bancasRoutes.post('/:id/ata/digitalizada', exigirPerfil('ORIENTADOR', 'COORDENACAO'), async (req, res) => {
+  res.status(201).json(await bancasService.enviarAtaDigitalizada(usuarioDe(req), Number(req.params.id), pdfSchema.parse(req.body)));
+});
+bancasRoutes.get('/:id/ata/digitalizada', async (req, res) => {
+  const a = await bancasService.ataDigitalizada(usuarioDe(req), Number(req.params.id));
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(a.arquivo_nome)}"`);
+  res.send(a.arquivo);
+});
+// Correção de nota já lançada: só a coordenação, com justificativa
+bancasRoutes.patch('/:id/notas/:membroId', exigirPerfil('COORDENACAO'), async (req, res) => {
+  res.json(await bancasService.corrigirNota(usuarioDe(req), Number(req.params.id), Number(req.params.membroId), correcaoNotaSchema.parse(req.body)));
+});
+
+// Suplente assume, cancelamento e arquivo de agenda
+bancasRoutes.patch('/:id/substituir', exigirPerfil('ORIENTADOR', 'COORDENACAO'), async (req, res) => {
+  res.json(await bancasService.substituir(usuarioDe(req).id, Number(req.params.id), substituirSchema.parse(req.body)));
+});
+bancasRoutes.patch('/:id/cancelar', exigirPerfil('ORIENTADOR', 'COORDENACAO'), async (req, res) => {
+  res.json(await bancasService.cancelar(usuarioDe(req), Number(req.params.id), cancelarSchema.parse(req.body).motivo));
+});
+bancasRoutes.get('/:id/agenda.ics', async (req, res) => {
+  const ics = await bancasService.arquivoAgenda(usuarioDe(req), Number(req.params.id));
+  res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="defesa-tcc.ics"');
+  res.send(ics);
+});
 
 // UC21 A1 – Convidar a audiência
-bancasRoutes.post('/:id/convites', exigirPerfil('ALUNO', 'ORIENTADOR'), async (req, res) => {
+bancasRoutes.post('/:id/convites', exigirPerfil('ALUNO', 'ORIENTADOR', 'COORDENACAO'), async (req, res) => {
   res.json(await bancasService.convidar(usuarioDe(req), Number(req.params.id), convitesSchema.parse(req.body).emails));
 });

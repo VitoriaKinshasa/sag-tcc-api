@@ -2,15 +2,18 @@ import type { Db } from '../../shared/db.js';
 import { SITUACOES_ATIVAS } from '../../shared/util.js';
 
 export const orientacaoRepository = {
-  /** Orientadores ativos do NUCOMP, com orientandos atuais e limite do curso (UC07). */
+  /**
+   * Orientadores ativos do NUCOMP (UC07). Os professores orientam alunos de qualquer curso; a coordenação
+   * também é professora e pode orientar. O limite (RD05) é o total de orientandos, somando todos os cursos.
+   */
   async listarOrientadores(db: Db, areaId?: number) {
     const { rows } = await db.query(
-      `SELECT u.id, u.nome, u.email, c.sigla AS curso, c.limite_orientandos AS limite,
+      `SELECT u.id, u.nome, u.email, u.perfil, (SELECT valor FROM regra_nucleo WHERE chave = 'limite_orientandos') AS limite,
               (SELECT count(*) FROM tcc t WHERE t.orientador_id = u.id AND t.situacao = ANY($2))::int AS orientandos,
               COALESCE((SELECT json_agg(a.nome ORDER BY a.nome) FROM professor_area pa
                         JOIN area_conhecimento a ON a.id = pa.area_id WHERE pa.professor_id = u.id), '[]') AS areas
-       FROM usuario u JOIN curso c ON c.id = u.curso_id
-       WHERE u.perfil = 'ORIENTADOR' AND u.ativo AND NOT u.externo
+       FROM usuario u
+       WHERE u.perfil IN ('ORIENTADOR', 'COORDENACAO') AND u.ativo AND NOT u.externo
          AND ($1::bigint IS NULL OR EXISTS (SELECT 1 FROM professor_area pa WHERE pa.professor_id = u.id AND pa.area_id = $1))
        ORDER BY u.nome`,
       [areaId ?? null, SITUACOES_ATIVAS],
@@ -21,8 +24,8 @@ export const orientacaoRepository = {
   /** Busca o professor travando a linha, para que dois aceites simultâneos não ultrapassem o limite. */
   async buscarProfessorComCarga(db: Db, professorId: number) {
     const { rows } = await db.query(
-      `SELECT u.id, u.nome, u.perfil, u.ativo, u.externo, c.limite_orientandos AS limite
-       FROM usuario u LEFT JOIN curso c ON c.id = u.curso_id WHERE u.id = $1 FOR UPDATE OF u`,
+      `SELECT u.id, u.nome, u.perfil, u.ativo, u.externo, (SELECT valor FROM regra_nucleo WHERE chave = 'limite_orientandos') AS limite
+       FROM usuario u WHERE u.id = $1 FOR UPDATE OF u`,
       [professorId],
     );
     if (!rows[0]) return undefined;
@@ -70,9 +73,10 @@ export const orientacaoRepository = {
   /** TCCs em andamento que o professor orienta ou coorienta (usados pela tela de testes). */
   async tccsDoOrientador(db: Db, professorId: number) {
     const { rows } = await db.query(
-      `SELECT t.id, t.titulo, t.situacao, t.atrasado, u.nome AS aluno, a.nome AS area,
+      `SELECT t.id, t.titulo, t.situacao, t.atrasado, t.visibilidade, t.curso_id, c.sigla AS curso, u.nome AS aluno, a.nome AS area,
               CASE WHEN t.orientador_id = $1 THEN 'ORIENTADOR' ELSE 'COORIENTADOR' END AS papel
        FROM tcc t JOIN usuario u ON u.id = t.aluno_id JOIN area_conhecimento a ON a.id = t.area_id
+       JOIN curso c ON c.id = t.curso_id
        WHERE (t.orientador_id = $1 OR t.coorientador_id = $1) AND t.situacao = ANY($2)
        ORDER BY u.nome`,
       [professorId, SITUACOES_ATIVAS],

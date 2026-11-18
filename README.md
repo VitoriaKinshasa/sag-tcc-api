@@ -31,12 +31,18 @@ alertas automáticos 7 dias e 1 dia antes de cada prazo, marcação de TCC atras
    npm run dev
    ```
 5. Acesse http://localhost:3000/api/saude – deve aparecer `{"status":"ok"}`.
-6. Para testar as funcionalidades pelo navegador, abra http://localhost:3000 (tela de testes, explicada abaixo).
-7. Também dá para testar pelo VS Code, com o arquivo `docs/exemplos.http` (extensão **REST Client**).
+6. Abra **http://localhost:3000**: aparece o **sistema (frontend em React)**, explicado abaixo.
+7. A **tela de testes da API** continua em **http://localhost:3000/teste**.
+8. Também dá para testar pelo VS Code, com o arquivo `docs/exemplos.http` (extensão **REST Client**).
+
+## Sistema (frontend)
+O frontend fica na pasta **`sag-tcc-web`**, ao lado desta pasta, feito em **React + TypeScript** (Vite).
+A versão pronta dele é gerada dentro de `web/` (desta pasta), e a API mostra essa versão em http://localhost:3000.
+Para mudar as telas, veja o `README.md` da pasta `sag-tcc-web`.
 
 ## Tela de testes
 A própria API entrega uma tela simples (`public/index.html`) para testar as funcionalidades do TP2 e do TP3 sem ferramentas extras.
-Com `npm run dev` rodando, abra **http://localhost:3000** e entre com um dos usuários de exemplo (senha `Senha@123`).
+Com `npm run dev` rodando, abra **http://localhost:3000/teste** e entre com um dos usuários de exemplo (senha `Senha@123`).
 
 | Perfil | O que dá para testar |
 |---|---|
@@ -48,7 +54,11 @@ Com `npm run dev` rodando, abra **http://localhost:3000** e entre com um dos usu
 
 Há dois jeitos de preparar o banco:
 - `npm run db:reset` – banco **limpo**: só os usuários de exemplo. Você cadastra calendário, propostas, bancas etc. pela tela.
+- `npm run db:salvar` – guarda uma **cópia** de todos os dados na pasta `copias` (fica fora do Git).
+- `npm run db:restaurar` – volta o banco para a **cópia mais recente** (use depois de testar com o `db:exemplos`).
 - `npm run db:exemplos` – o mesmo **mais cenários prontos** (arquivo `database/cenarios-exemplo.sql`):
+- **Carla** (SI): defesa **já realizada** (aprovada com correções), com a ata esperando as assinaturas de Elloa, Fábio e Rafael.
+  Código da ata para testar a verificação: `SAG-DEMO-ATA1`. Folha de aprovação e declaração de participação já disponíveis;
 - calendário do semestre atual nos 3 cursos, com a etapa **Defesa** aberta por 30 dias a partir do dia em que o banco foi recriado;
 - **Helena** (EC) apta à defesa, orientada pelo **Prof. Tiago**, sem banca: entre como Tiago e cadastre a banca em *Meus orientandos*;
 - **Gabriel** (EC) com a banca de ontem (presidente: **Profa. Polianny**; titulares: Prof. Tiago e Dr. Rafael Costa, membro externo): cada um lança a nota em *Bancas* e a Polianny registra o resultado;
@@ -128,9 +138,47 @@ e `*.repository.ts` (acesso ao banco).
 | GET | /api/publicacoes/pendentes | Coordenação | RF21 |
 | PATCH | /api/publicacoes/:id | Coordenação | RF21 |
 | POST | /api/prazos/verificar | Coordenação | RF14 |
+| POST | /api/bancas/:id/ata/assinar | Presidente e titulares | Assinatura eletrônica da ata |
+| GET/POST | /api/bancas/:id/ata/digitalizada | envolvidos / Presidente, Coordenação | Ata assinada à mão (PDF) |
+| PATCH | /api/bancas/:id/notas/:membroId | Coordenação | Correção de nota com justificativa |
+| PATCH | /api/bancas/:id/substituir | Orientador (presidente) | Suplente assume |
+| PATCH | /api/bancas/:id/cancelar | Presidente, Coordenação | Cancelar banca |
+| GET | /api/bancas/:id/agenda.ics | envolvidos | Arquivo de agenda |
+| GET | /api/verificar/:codigo | público (sem login) | Verificar ata ou declaração |
+| GET/POST | /api/declaracoes/disponiveis, /api/declaracoes | todos | Declarações |
+| GET | /api/tccs/:id/downloads | envolvidos | Quem baixou os arquivos |
+| GET | /api/me, /api/me/exportar | todos | Meus dados (LGPD) |
+| POST | /api/me/correcao, /api/auth/alterar-senha | todos | Pedir correção, alterar senha |
+| GET | /api/relatorios, /api/emails | Coordenação | Relatórios, e-mails simulados |
+| POST | /api/usuarios/importar | Coordenação | Importar alunos (planilha) |
+| PUT | /api/cursos/:id/regras | Coordenação do curso | Regras do curso |
 
-> Os e-mails ainda são exibidos só no terminal (nenhum e-mail de verdade é enviado). Antes de ligar um serviço de envio real,
-> troque os e-mails dos dados de exemplo, porque alguns são de professores reais.
+> Os e-mails ainda são simulados: aparecem no terminal e na tela **Cadastros → E-mails enviados (simulação)** da coordenação
+> (nenhum e-mail de verdade é enviado). Antes de ligar um serviço de envio real, troque os e-mails dos dados de exemplo,
+> porque alguns são de professores reais.
+
+## Complementos do TP3 (documentos, privacidade e segurança)
+- **Ata da defesa:** cada avaliador assina **eletronicamente com a própria senha** (assinatura simples, Lei 14.063/2020). O sistema guarda
+  a "impressão digital" (hash SHA-256) da ata: se uma nota for corrigida depois, a assinatura deixa de valer e precisa ser refeita.
+  Também dá para **imprimir, assinar à mão e enviar o PDF escaneado**. Toda ata ganha um **código de verificação** (ex.: SAG-7F3K-92QA),
+  conferido por qualquer pessoa em `/verificar`.
+- **Declarações** (participação em banca, orientação e folha de aprovação) com código de verificação.
+- **Aprovado com correções:** a banca dá um prazo (ou vale o padrão do curso); o aluno envia a entrega definitiva; quando o orientador
+  aprova, o TCC fica **concluído**. Prazo vencido marca o TCC como atrasado.
+- **Privacidade das notas:** o aluno vê a nota final e os pareceres, mas não a nota de cada membro (o curso pode liberar). Nota lançada
+  só é corrigida pela coordenação, com justificativa registrada na auditoria. Relatórios mostram só médias.
+- **Segurança do TCC em andamento:** a banca baixa só a versão final; **todo download fica registrado** e o aluno vê quem baixou.
+  Na versão final e na entrega definitiva o aluno marca a **declaração de autoria**.
+- **Bancas:** suplente assume no lugar de um titular, cancelamento com motivo, **lembrete automático 24 h antes** e arquivo `.ics`.
+- **Meus dados (LGPD):** dados da conta, acesso anterior, alterar senha, baixar todos os dados e pedir correção à coordenação.
+- **Coordenação:** só vê e gerencia pessoas do próprio curso; **regras por curso** (nota mínima, titulares e suplentes da banca,
+  prazo das correções, orientandos por professor, aluno ver notas individuais); **relatórios** com planilha; **importar alunos** de planilha CSV.
+- **Professores do NUCOMP:** os professores não pertencem a um curso; orientam e participam de bancas de qualquer curso.
+  Só alunos e coordenação ficam ligados a um curso. O limite de orientandos (RD05) é o **total** do professor, somando todos
+  os cursos, e é uma regra do NUCOMP (tela Cursos, áreas e regras). A **coordenação também é professora**: orienta,
+  dá parecer e participa de bancas (menu "Minha orientação").
+- **Banco de dados:** as tabelas e colunas novas ficam em `database/atualizacoes.sql` e são aplicadas **sozinhas quando o servidor liga**,
+  sem apagar dados (não precisa rodar o `db:reset`).
 
 ## Gerência de configuração
 - Branches: `main` (versão entregue), `develop` (integração), `feature/*`, `fix/*`, `docs/*`.

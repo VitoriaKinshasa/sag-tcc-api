@@ -4,7 +4,7 @@ import { ZodError } from 'zod';
 import { env } from '../config/env.js';
 import { ErroNegocio, proibido } from './errors.js';
 
-export type Perfil = 'COORDENACAO' | 'ORIENTADOR' | 'ALUNO' | 'MEMBRO_BANCA';
+export type Perfil = 'COORDENACAO' | 'ORIENTADOR' | 'ALUNO' | 'MEMBRO_BANCA' | 'ADMINISTRADOR';
 export interface UsuarioLogado { id: number; perfil: Perfil; cursoId: number | null }
 
 declare global {

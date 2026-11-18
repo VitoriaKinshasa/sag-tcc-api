@@ -11,6 +11,7 @@ const versaoSchema = z.object({
   arquivoNome: z.string({ required_error: 'Escolha o arquivo PDF' }).trim().min(1, 'Escolha o arquivo PDF').max(200),
   arquivoBase64: z.string({ required_error: 'Escolha o arquivo PDF' }).min(1, 'Escolha o arquivo PDF'),
   visibilidade: z.enum(['TEXTO_COMPLETO', 'SOMENTE_METADADOS']).optional(),
+  declaracaoAutoria: z.boolean().optional(),
 });
 const parecerSchema = z.object({
   decisao: z.enum(['APROVADA', 'AJUSTES'], { errorMap: () => ({ message: 'Escolha o parecer' }) }),
@@ -33,6 +34,9 @@ acompanhamentoRoutes.post('/tccs/:id/versoes', autenticar, exigirPerfil('ALUNO')
 acompanhamentoRoutes.get('/tccs/:id/versoes', autenticar, async (req, res) => {
   res.json(await acompanhamentoService.listarVersoes(usuarioDe(req), Number(req.params.id)));
 });
+acompanhamentoRoutes.get('/tccs/:id/downloads', autenticar, async (req, res) => {
+  res.json(await acompanhamentoService.downloads(usuarioDe(req), Number(req.params.id)));
+});
 acompanhamentoRoutes.get('/tccs/:id/prazos', autenticar, async (req, res) => {
   res.json(await acompanhamentoService.prazos(usuarioDe(req), Number(req.params.id)));
 });
@@ -40,7 +44,7 @@ acompanhamentoRoutes.post('/tccs/:id/publicacao', autenticar, exigirPerfil('ALUN
   res.status(201).json(await acompanhamentoService.pedirPublicacao(usuarioDe(req).id, Number(req.params.id), publicacaoSchema.parse(req.body)));
 });
 
-acompanhamentoRoutes.get('/versoes/recebidas', autenticar, exigirPerfil('ORIENTADOR'), async (req, res) => {
+acompanhamentoRoutes.get('/versoes/recebidas', autenticar, exigirPerfil('ORIENTADOR', 'COORDENACAO'), async (req, res) => {
   res.json(await acompanhamentoService.versoesRecebidas(usuarioDe(req).id));
 });
 acompanhamentoRoutes.get('/versoes/:id/arquivo', autenticar, async (req, res) => {
@@ -49,7 +53,7 @@ acompanhamentoRoutes.get('/versoes/:id/arquivo', autenticar, async (req, res) =>
   res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(a.arquivo_nome)}"`);
   res.send(a.arquivo);
 });
-acompanhamentoRoutes.post('/versoes/:id/parecer', autenticar, exigirPerfil('ORIENTADOR'), async (req, res) => {
+acompanhamentoRoutes.post('/versoes/:id/parecer', autenticar, exigirPerfil('ORIENTADOR', 'COORDENACAO'), async (req, res) => {
   res.status(201).json(await acompanhamentoService.darParecer(usuarioDe(req).id, Number(req.params.id), parecerSchema.parse(req.body)));
 });
 

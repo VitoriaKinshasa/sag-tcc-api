@@ -610,3 +610,33 @@ Content-Type: application/json
 ### J22. UC17 – TCCs do curso (coordenação)   Esperado: 200, Helena "EM_DESENVOLVIMENTO" com banca "CANCELADA"
 GET {{api}}/tccs
 Authorization: Bearer {{tokenAurea}}
+
+# =====================================================================
+# K. Complementos do TP3 – rode depois da parte J (usa a banca do Gabriel)
+# =====================================================================
+
+### K1. Assinar a ata eletronicamente (presidente)   Esperado: 200 (com senha errada: 422 "Senha incorreta")
+POST {{api}}/bancas/{{idBancaGabriel}}/ata/assinar
+Authorization: Bearer {{tokenPolianny}}
+Content-Type: application/json
+
+{ "senha": "Senha@123" }
+
+### K2. Verificar a ata pelo código (sem login) – copie o "codigo_verificacao" da ata (J15)
+GET {{api}}/verificar/SAG-XXXX-XXXX
+
+### K3. Declarações que eu posso emitir
+GET {{api}}/declaracoes/disponiveis
+Authorization: Bearer {{tokenTiago}}
+
+### K4. Meus dados
+GET {{api}}/me
+Authorization: Bearer {{tokenAurea}}
+
+### K5. Relatórios do curso (coordenação)
+GET {{api}}/relatorios
+Authorization: Bearer {{tokenAurea}}
+
+### K6. E-mails enviados (simulação) – mostra os links de primeiro acesso
+GET {{api}}/emails
+Authorization: Bearer {{tokenAurea}}
